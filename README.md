@@ -185,7 +185,6 @@ Update the link below once deployed:
 ### Running tests
 
 ```bash
-make test          # Run all tests
 make test-cov      # Run tests with coverage report
 ```
 
