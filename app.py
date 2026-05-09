@@ -136,20 +136,17 @@ def process_uploaded_files(files):
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚙️ Configuration")
-    with st.container(border=True):
-        st.markdown("<h4 style='color: #f8fafc; margin-bottom: 5px;'>🔑 Authentication</h4>", unsafe_allow_html=True)
+    with st.expander("🔑 Authentication", expanded=True):
         env_or_key = os.getenv("OPENROUTER_API_KEY", "")
         if env_or_key:
-            st.success("✅ OpenRouter Key loaded from .env")
-            api_key = st.text_input("Override OpenRouter Key (Optional)", type="password", placeholder="Leave blank to use .env")
+            api_key = st.text_input("OpenRouter Key (Loaded)", type="password", placeholder="Override .env key...", help="Key is already loaded from .env. Type here to override.")
             if not api_key: api_key = env_or_key
         else:
             api_key = st.text_input("OpenRouter API Key", type="password", placeholder="sk-or-v1-...")
 
         env_tavily = os.getenv("TAVILY_API_KEY", "")
         if env_tavily:
-            st.success("✅ Tavily Key loaded from .env")
-            tavily_key = st.text_input("Override Tavily Key (Optional)", type="password", placeholder="Leave blank to use .env")
+            tavily_key = st.text_input("Tavily Key (Loaded)", type="password", placeholder="Override .env key...", help="Key is already loaded from .env. Type here to override.")
             if not tavily_key: tavily_key = env_tavily
         else:
             tavily_key = st.text_input("Tavily API Key (Optional)", type="password", placeholder="tvly-...")
@@ -157,8 +154,7 @@ with st.sidebar:
         if api_key: os.environ["OPENROUTER_API_KEY"] = api_key
         if tavily_key: os.environ["TAVILY_API_KEY"] = tavily_key
         
-    with st.container(border=True):
-        st.markdown("<h4 style='color: #f8fafc; margin-bottom: 5px;'>📄 Local Knowledge (RAG)</h4>", unsafe_allow_html=True)
+    with st.expander("📁 Local Knowledge (RAG)", expanded=False):
         uploaded_files = st.file_uploader("Upload Documents to index", accept_multiple_files=True, type=["pdf", "txt"])
 
 @st.cache_resource

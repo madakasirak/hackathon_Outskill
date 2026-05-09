@@ -16,7 +16,7 @@ Type a research question or upload documents. Four specialized agents collaborat
 - **Local RAG (FAISS)**: Upload PDFs or TXT files directly in the UI. They are instantly indexed and searched.
 - **The Model Council**: The Analyzer agent consults multiple distinct LLMs (e.g., GPT-4o-mini and Claude 3 Haiku) to gain diverse perspectives, synthesizing them into profound insights.
 - **Self-Correction via Reflection**: The system automatically detects coverage gaps or contradictions in the research and loops back to find missing information.
-- **Stats & Billing Dashboard**: A beautiful analytics dashboard tracks every API call, counting input/output tokens and estimating your billing costs.
+- **Stats & Billing Dashboard**: A beautiful analytics dashboard tracks every API call, providing a detailed breakdown of input/output tokens and costs **per-model** (e.g., GPT vs Claude) for every query.
 - **Contextual Follow-up Chat**: After a report is generated, you can ask follow-up questions in a chat interface that strictly uses the retrieved evidence as context.
 
 ## 🏗️ Architecture
@@ -135,7 +135,9 @@ deep-researcher/
 
 ## 📊 The Dashboard
 
-This project includes a dedicated **Stats Dashboard** tab inside the Streamlit UI. It intercepts every LangChain model call to log `input_tokens` and `output_tokens`, matches them against a pricing matrix, and displays your lifetime API costs alongside a history of all your queries.
+This project includes a dedicated **Stats Dashboard** tab inside the Streamlit UI. It intercepts every LangChain model call to log `input_tokens` and `output_tokens`, matches them against a pricing matrix, and displays your lifetime API costs alongside a history of all your queries. 
+
+Each past query is displayed as an interactive, expandable row. Clicking on a query reveals a **Model Breakdown** table, showing you exactly how many tokens and fractional cents were spent on the different models used during that run (e.g., how much the `gpt-4o-mini` Retriever cost versus the `claude-3-haiku` Model Council synthesis).
 
 ## 🏆 Hackathon Scorecard
 
