@@ -1,6 +1,6 @@
 # 🔬 Multi-Agent AI Deep Researcher
 
-A 9-agent research assistant built on LangGraph that produces fact-checked, source-rated research reports with charts. Submitted for the Engineering Accelerator hackathon.
+A streamlined, high-performance 4-agent research assistant built on LangGraph. It produces fact-checked, source-rated research reports and features a Model Council for multi-perspective synthesis, robust token/billing tracking, and a premium Streamlit UI. Submitted for the Engineering Accelerator hackathon.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B)](https://streamlit.io/)
@@ -8,90 +8,57 @@ A 9-agent research assistant built on LangGraph that produces fact-checked, sour
 
 ---
 
-## What it does
+## 🌟 What it does
 
-Type one research question. Nine specialized agents collaborate to produce a structured report with:
+Type a research question or upload documents. Four specialized agents collaborate to produce a structured, highly analytical report with:
 
-- **Multi-source evidence** from Tavily (web), ArXiv (academic), and Wikipedia
-- **Source trust scoring** — each finding labeled high / medium / low confidence
-- **Self-correction via Reflection** — the system finds gaps and contradictions, then loops back to research more
-- **Multimodal analysis** — figures and charts in uploaded PDFs are interpreted by a vision LLM
-- **Generated visualizations** — quantitative findings auto-rendered as charts
-- **Persistent memory** — SQLite checkpointer remembers research across sessions
+- **Dynamic Parallel Retrieval**: Automatically selects the best tools (Tavily, ArXiv, Wikipedia, DuckDuckGo) and fetches data concurrently.
+- **Local RAG (FAISS)**: Upload PDFs or TXT files directly in the UI. They are instantly indexed and searched.
+- **The Model Council**: The Analyzer agent consults multiple distinct LLMs (e.g., GPT-4o-mini and Claude 3 Haiku) to gain diverse perspectives, synthesizing them into profound insights.
+- **Self-Correction via Reflection**: The system automatically detects coverage gaps or contradictions in the research and loops back to find missing information.
+- **Stats & Billing Dashboard**: A beautiful analytics dashboard tracks every API call, counting input/output tokens and estimating your billing costs.
+- **Contextual Follow-up Chat**: After a report is generated, you can ask follow-up questions in a chat interface that strictly uses the retrieved evidence as context.
 
-## Architecture
+## 🏗️ Architecture
 
-```
-                    ┌─────────┐
-START ────────────► │ Planner │
-                    └────┬────┘
-                         ▼
-                ┌────────────────┐
-            ┌──►│   Retriever    │◄──────┐
-            │   └────────┬───────┘       │
-            │            ▼               │
-            │   ┌─────────────────┐      │
-            │   │SourceReliability│      │
-            │   └────────┬────────┘      │
-            │            ▼               │  (loop fires when
-            │   ┌────────────────┐       │   Reflection finds
-            │   │   Multimodal   │       │   gaps or contradictions)
-            │   └────────┬───────┘       │
-            │            ▼               │
-            │   ┌────────────────┐       │
-            │   │    Analyzer    │       │
-            │   └────────┬───────┘       │
-            │            ▼               │
-            │   ┌────────────────┐       │
-            │   │  FactChecker   │ (RAG) │
-            │   └────────┬───────┘       │
-            │            ▼               │
-            │   ┌────────────────┐       │
-            └───┤   Reflection   ├───────┘
-                └────────┬───────┘
-                         ▼ (when satisfied)
-                ┌────────────────┐
-                │  Visualization │
-                └────────┬───────┘
-                         ▼
-                ┌────────────────┐
-                │ ReportBuilder  │
-                └────────┬───────┘
-                         ▼
-                        END
+```mermaid
+graph TD
+    START((START)) --> Retriever[🔍 Retriever Agent]
+    Retriever --> Analyzer[🔬 Analyzer Agent]
+    Analyzer --> Reflection[🤔 Reflection Agent]
+    
+    Reflection -- Needs More Data --> Retriever
+    Reflection -- Research Complete --> ReportBuilder[📝 Report Builder]
+    
+    ReportBuilder --> END((END))
 ```
 
-### The nine agents
+### The Four Agents
 
-| Agent | Role | LLM |
+| Agent | Role | LLM / Tech |
 |---|---|---|
-| **Planner** | Decomposes the query into 3-5 focused sub-questions | Claude Sonnet |
-| **Retriever** | Pulls from Tavily + ArXiv + Wikipedia, indexes into ChromaDB | (tools only) |
-| **SourceReliability** | Rates each source as high/medium/low trust | GPT-4o-mini |
-| **Multimodal** | Extracts and analyzes figures from uploaded PDFs | GPT-4o-mini (vision) |
-| **Analyzer** | Synthesizes raw findings into 3-5 evidence-backed insights | GPT-4o-mini |
-| **FactChecker** | Verifies each insight against the RAG store | Claude Sonnet |
-| **Reflection** | Identifies coverage gaps, contradictions, overlooked angles | Claude Sonnet |
-| **Visualization** | Generates a chart from quantitative findings | GPT-4o-mini |
-| **ReportBuilder** | Compiles the final structured markdown report | Claude Sonnet |
+| **Retriever** | Dynamically routes queries to parallel search tools and FAISS. | Fast LLM + LangChain Tools |
+| **Analyzer** | Synthesizes raw findings into evidence-backed insights via "Model Council". | Fast LLM (GPT) + Council (Claude) |
+| **Reflection** | Identifies coverage gaps, contradictions, and determines if a loop is needed. | Reasoning LLM |
+| **ReportBuilder** | Compiles the final structured markdown report with citations. | Reasoning LLM |
 
-## Tech stack
+## 💻 Tech Stack
 
 - **Orchestration**: LangGraph (conditional routing + persistent memory)
-- **LLM gateway**: OpenRouter (one key, all providers)
-- **RAG**: ChromaDB + FastEmbed (`BAAI/bge-small-en-v1.5`, local embeddings)
-- **Retrieval**: Tavily, ArXiv, Wikipedia
-- **Memory**: LangGraph SqliteSaver checkpointer
-- **Multimodal**: Vision LLM via OpenRouter
-- **UI**: Streamlit
-- **Schemas**: Pydantic (structured output throughout)
+- **LLM Gateway**: OpenRouter (one key, all providers)
+- **RAG**: FAISS + HuggingFace (`all-MiniLM-L6-v2`)
+- **Retrieval**: Tavily, ArXiv, Wikipedia, DuckDuckGo
+- **State & Memory**: LangGraph SqliteSaver checkpointer (`checkpoints.db`)
+- **Telemetry**: Custom SQLite Database (`stats.db`) for Token & Cost Tracking
+- **UI**: Streamlit with Custom CSS (Glassmorphism & glowing agent widgets)
 
-## Quick start
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Python 3.10+
-- Two API keys (both have free tiers):
+- `uv` package manager (recommended)
+- API keys (both have free tiers):
   - **OpenRouter** — https://openrouter.ai/keys
   - **Tavily** — https://tavily.com
 
@@ -106,120 +73,67 @@ cd deep-researcher
 cp .env.example .env
 # Edit .env with your real OPENROUTER_API_KEY and TAVILY_API_KEY
 
-# Install (uses uv under the hood)
-make install-dev
-
-# Verify with the test suite
-make test
+# Set up the virtual environment and install dependencies using uv
+uv venv
+source .venv/bin/activate
+uv pip sync requirements.txt
+# Alternatively, use 'uv sync' if relying on pyproject.toml
 
 # Launch the Streamlit app
-make run
+streamlit run app.py
 ```
 
-The app opens at http://localhost:8501.
+The app opens at `http://localhost:8501`.
 
-### Or run the notebook
-
-If you prefer to iterate in Colab/Jupyter:
-
-```bash
-make run-notebook
-# Or upload deep_researcher_skeleton_v3.ipynb to https://colab.research.google.com
-```
-
-## Folder structure
+## 📁 Folder Structure
 
 ```
 deep-researcher/
 ├── README.md                            # You are here
-├── Makefile                             # install, run, test, lint, clean
-├── pyproject.toml                       # Project metadata + deps + tooling config
-├── requirements.txt                     # Pinned runtime deps (fallback)
+├── pyproject.toml                       # Project metadata
+├── requirements.txt                     # Pinned runtime dependencies
 ├── .env.example                         # Template for required env vars
-├── .gitignore                           # Standard + project-specific ignores
+├── .gitignore                           # Standard ignores
+├── app.py                               # Premium Streamlit UI & Entry Point
 │
-├── app.py                               # Streamlit entry point
-├── deep_researcher_skeleton_v3.ipynb    # Source notebook with full architecture
+├── agents/                              # The 4 Core LangGraph Agents
+│   ├── retriever_agent.py               # Parallel retrieval + FAISS
+│   ├── analyzer_agent.py                # Model Council logic
+│   ├── reflection_agent.py              # Gap detection loop
+│   └── report_agent.py                  # Final markdown assembly
 │
-├── core/                                # Refactored agent package (TODO)
-│   ├── __init__.py
-│   ├── agents.py                        # All 9 agent functions
-│   ├── graph.py                         # StateGraph assembly
-│   ├── schemas.py                       # Pydantic models
-│   └── llm.py                           # OpenRouter LLM factory
+├── graph/                               # LangGraph Orchestration
+│   ├── state.py                         # TypedDict for agent memory
+│   └── workflow.py                      # Node and Edge assembly
 │
-└── tests/
-    ├── conftest.py                      # Pytest fixtures (mocked LLMs)
-    ├── test_schemas.py                  # Pydantic validation tests
-    └── test_agents.py                   # Per-agent unit tests
+├── services/                            # Utilities & Integrations
+│   ├── callbacks.py                     # Token tracking and cost calculation
+│   ├── db.py                            # SQLite stats database
+│   └── llm.py                           # OpenRouter LLM configurations
+│
+└── tools/                               # Custom Tools
+    ├── utilities.py                     # PDF parsing and REPL
+    └── __init__.py
 ```
 
-## Demo query
+## 📊 The Dashboard
 
-Try this in the Streamlit UI:
+This project includes a dedicated **Stats Dashboard** tab inside the Streamlit UI. It intercepts every LangChain model call to log `input_tokens` and `output_tokens`, matches them against a pricing matrix, and displays your lifetime API costs alongside a history of all your queries.
 
-> *"How are GLP-1 drugs (like Ozempic) reshaping food and beverage company strategy in 2025?"*
-
-You'll see the agent log stream live as Planner decomposes, Retriever pulls from three sources, SourceReliability rates each, Reflection identifies a contradiction (efficacy vs side effects), the loop fires once for deeper coverage, then the report renders with an embedded chart and a confidence badge.
-
-> 🎬 **Demo:** *(replace with link to Loom video or animated GIF)*
-
-## Deploying to Streamlit Cloud (free)
-
-1. Push this repo to **public** GitHub (Streamlit Cloud free tier requires public repos)
-2. Sign up at https://share.streamlit.io with your GitHub account
-3. Click **New app** → select the repo, branch (`main`), and main file (`app.py`)
-4. In **Advanced settings → Secrets**, paste:
-   ```toml
-   OPENROUTER_API_KEY = "sk-or-v1-..."
-   TAVILY_API_KEY = "tvly-..."
-   ```
-5. Click **Deploy** — the app builds in ~3 minutes and is publicly accessible at `https://your-app.streamlit.app`
-
-Update the link below once deployed:
-
-> 🚀 **Live demo:** [deep-researcher.streamlit.app](#) *(replace with your URL)*
-
-## Development
-
-### Running tests
-
-```bash
-make test-cov      # Run tests with coverage report
-```
-
-### Linting
-
-```bash
-make lint          # Check
-make format        # Auto-fix
-```
-
-### Cleaning artifacts
-
-```bash
-make clean         # Remove caches, ChromaDB, checkpoints, build artifacts
-```
-
-## How it scores
-
-This system targets every axis of the hackathon scorecard:
+## 🏆 Hackathon Scorecard
 
 | Criterion | How we hit it |
 |---|---|
-| Real LangGraph (not manual sequential) | ✅ 9 nodes wired with conditional edges |
-| Conditional routing | ✅ Reflection routes back to Retriever on gaps |
-| Iterative loop | ✅ Gap-filling loop with `MAX_ITERATIONS` cap |
-| RAG with vector store | ✅ ChromaDB + FastEmbed, queried by FactChecker |
-| Multi-source retrieval | ✅ Tavily + ArXiv + Wikipedia |
-| Multimodal | ✅ Vision LLM as a graph node, processes PDF figures |
-| Pydantic structured output | ✅ 7 schemas, all use `with_structured_output` |
-| Memory | ✅ LangGraph SqliteSaver + persistent ChromaDB |
-| Code quality | ✅ Ruff config, type hints, docstrings, tests |
-| Production hygiene | ✅ pyproject.toml, .env.example, .gitignore, Makefile |
-| Tests | ✅ pytest suite with mocked LLMs |
-| Live deploy | ✅ Streamlit Cloud (link above) |
+| **LangGraph Architecture** | ✅ 4 distinct nodes wired with conditional edges |
+| **Conditional Routing** | ✅ Reflection node routes back to Retriever if gaps are found |
+| **Iterative Loop** | ✅ Gap-filling loop capped by `MAX_ITERATIONS` |
+| **RAG Vector Store** | ✅ FAISS + HuggingFace Embeddings for local document QA |
+| **Multi-source Retrieval** | ✅ Parallel execution of Tavily, ArXiv, Wikipedia, DDG |
+| **Memory** | ✅ SqliteSaver checkpointer for state persistence |
+| **Production UI** | ✅ Premium Streamlit interface with glowing animations & stats tracking |
+| **LLM Independence** | ✅ OpenRouter configuration allows instant swapping between OpenAI, Anthropic, and Google models |
+| **Follow-up Chat** | ✅ Context-aware follow-up chat post-generation |
 
-## License
+## 📜 License
 
 MIT — see `LICENSE` file.
