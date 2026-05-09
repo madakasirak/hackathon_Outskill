@@ -11,18 +11,60 @@ def get_llm():
     )
 
 def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Simulates retrieving information from the web/documents."""
+    """Retrieves information from the web/documents using APIs."""
     topic = state.get("topic")
-    # In a real app, this would use a Web Search API like Tavily or Exa.
-    # For a minimal POC without external dependencies, we use the LLM to generate simulated search context.
-    llm = get_llm()
-    prompt = f"Act as a retriever. Recall and provide 5 factual, distinct bullet points of raw context about the topic: '{topic}'."
+    raw_data = []
+    citations = []
+    errors = state.get("errors", [])
+    
+    # 1. Arxiv Search
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        raw_data = [line.strip() for line in response.content.split("\n") if line.strip()]
-        return {"raw_data": raw_data, "citations": ["Simulated Domain Knowledge Retrieval"]}
+        from langchain_community.utilities import ArxivAPIWrapper
+        arxiv = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
+        arxiv_results = arxiv.run(topic)
+        if arxiv_results and "No good Arxiv Result was found" not in arxiv_results:
+            raw_data.append(f"--- Arxiv Results ---\n{arxiv_results}")
+            citations.append("Arxiv")
     except Exception as e:
-        return {"errors": [str(e)]}
+        pass # Arxiv occasionally fails, ignore to continue with others
+
+    # 2. Tavily Search
+    if os.environ.get("TAVILY_API_KEY"):
+        try:
+            from langchain_community.tools.tavily_search import TavilySearchResults
+            tavily = TavilySearchResults(max_results=3)
+            # Tavily needs a dict or str. In newer versions, invoke(topic) works.
+            tavily_results = tavily.invoke({"query": topic})
+            if tavily_results:
+                raw_data.append(f"--- Tavily Results ---\n{str(tavily_results)}")
+                citations.append("Tavily")
+        except Exception as e:
+            errors.append(f"Tavily Error: {str(e)}")
+            
+    # 3. SerpAPI Search
+    if os.environ.get("SERPAPI_API_KEY"):
+        try:
+            from langchain_community.utilities import SerpAPIWrapper
+            serpapi = SerpAPIWrapper()
+            serp_results = serpapi.run(topic)
+            if serp_results:
+                raw_data.append(f"--- SerpAPI Results ---\n{serp_results}")
+                citations.append("SerpAPI")
+        except Exception as e:
+            errors.append(f"SerpAPI Error: {str(e)}")
+
+    # Fallback to LLM if no external results
+    if not raw_data:
+        try:
+            llm = get_llm()
+            prompt = f"Act as a retriever. Recall and provide 5 factual, distinct bullet points of raw context about the topic: '{topic}'."
+            response = llm.invoke([HumanMessage(content=prompt)])
+            raw_data.append(f"--- LLM Internal Knowledge ---\n{response.content}")
+            citations.append("LLM Internal Knowledge")
+        except Exception as e:
+            errors.append(f"LLM Retrieval Error: {str(e)}")
+
+    return {"raw_data": raw_data, "citations": citations, "errors": errors}
 
 def analysis_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     """Analyzes the retrieved data."""

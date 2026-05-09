@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
-from deep_researcher.state import ResearchState
-from deep_researcher.agents import retriever_agent, analysis_agent, insight_agent, report_agent
+from state import ResearchState
+from agents import retriever_agent, analysis_agent, insight_agent, report_agent
 
 def create_research_graph():
     # Initialize the graph
