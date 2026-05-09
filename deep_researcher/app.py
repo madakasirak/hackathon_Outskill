@@ -54,7 +54,7 @@ with st.sidebar:
     api_key = st.text_input("OpenRouter API Key *", type="password")
     model = st.selectbox(
         "Model",
-        ["openai/gpt-4o-mini", "anthropic/claude-4.5-sonnet"],
+        ["anthropic/claude-4.5-sonnet","openai/gpt-4o-mini"],
         index=0
     )
     

@@ -212,7 +212,7 @@ We asked two different AI models for their top insights on the topic '{topic}' b
 Model 1 (OpenAI GPT-4o-mini) insights:
 {resp_1.content}
 
-Model 2 (Anthropic Claude 3.5 Sonnet) insights:
+Model 2 (Anthropic Claude 4.5 Sonnet) insights:
 {resp_2.content}
 
 Your task as the Council President is to compare their insights. 
