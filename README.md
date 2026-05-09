@@ -11,7 +11,7 @@ graph TD
   __start__([START])
   retriever([retriever])
   analysis([analysis])
-  insight([insight])
+  insight([insight (model council)])
   report([report])
   __end__([END])
 
