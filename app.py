@@ -22,7 +22,9 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    [data-testid="stHeader"] { display: none !important; }
+    /* Hide header decoration but keep sidebar toggle button visible */
+    [data-testid="stHeader"] { background: transparent !important; border-bottom: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
     #MainMenu { visibility: hidden !important; }
     footer { visibility: hidden !important; }
 
