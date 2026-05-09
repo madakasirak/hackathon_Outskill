@@ -26,7 +26,7 @@ Identify:
 Iteration {iteration}/{MAX_ITERATIONS}. Set needs_more_research=True ONLY if concrete gaps remain."""
     
     try:
-        r = structured_llm.invoke(prompt)
+        r = structured_llm.invoke(prompt, config={"tags": ["Reflection"]})
     except Exception as e:
         print(f"Reflection failed, defaulting to no more research: {e}")
         r = ReflectionResult(coverage_gaps=[], contradictions=[], needs_more_research=False)

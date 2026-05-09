@@ -50,11 +50,11 @@ EVIDENCE FROM RAG:
     
     try:
         # Council Member 1: Default fast model (GPT-4o-mini)
-        member1_resp = fast_llm.invoke([HumanMessage(content=prompt)])
+        member1_resp = fast_llm.invoke([HumanMessage(content=prompt)], config={"tags": ["Analyzer"]})
         
         # Council Member 2: Alternative model (e.g., Claude Haiku or higher temp GPT)
         member2_llm = _get_council_llm("anthropic/claude-3-haiku")
-        member2_resp = member2_llm.invoke([HumanMessage(content=prompt)])
+        member2_resp = member2_llm.invoke([HumanMessage(content=prompt)], config={"tags": ["Analyzer"]})
         
         # Synthesis by Council President
         synthesis_prompt = f"""
@@ -72,11 +72,11 @@ EVIDENCE FROM RAG:
         Return as a clear numbered list.
         """
         
-        synthesis_resp = fast_llm.invoke([HumanMessage(content=synthesis_prompt)])
+        synthesis_resp = fast_llm.invoke([HumanMessage(content=synthesis_prompt)], config={"tags": ["Analyzer Synthesis"]})
         insights = [i.strip() for i in synthesis_resp.content.split('\n') if i.strip()]
     except Exception as e:
         print(f"Model Council failed: {e}. Falling back to single model.")
-        response = fast_llm.invoke([HumanMessage(content=prompt)])
+        response = fast_llm.invoke([HumanMessage(content=prompt)], config={"tags": ["Analyzer"]})
         insights = [i.strip() for i in response.content.split('\n') if i.strip()]
 
     print(f"--- Analyzer: Council synthesized {len(insights)} insights ---")

@@ -98,7 +98,7 @@ def retriever_agent(state: ResearchState) -> dict:
     """
     
     try:
-        decision = fast_llm.invoke([HumanMessage(content=decision_prompt)])
+        decision = fast_llm.invoke([HumanMessage(content=decision_prompt)], config={"tags": ["Retriever"]})
         selected_tools = [t.strip().upper() for t in decision.content.split(",")]
     except Exception as e:
         print(f"Tool selection failed, defaulting to all: {e}")

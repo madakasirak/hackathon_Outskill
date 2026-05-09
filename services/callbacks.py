@@ -1,5 +1,7 @@
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 from typing import Any
 
 # Pricing per 1M tokens (in USD)
@@ -19,8 +21,14 @@ class TokenTrackingCallback(BaseCallbackHandler):
         self.models_used = set()
         self.estimated_cost = 0.0
         self.model_breakdown = {}
+        self.agent_breakdown = {}
+        self.run_id_to_tag = {}
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> Any:
+    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], *, run_id: UUID, parent_run_id: Optional[UUID] = None, tags: Optional[List[str]] = None, metadata: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
+        # Default tag is "Unknown Stage" if not provided
+        self.run_id_to_tag[run_id] = tags[0] if tags and len(tags) > 0 else "Unknown Stage"
+
+    def on_llm_end(self, response: LLMResult, *, run_id: UUID, parent_run_id: Optional[UUID] = None, **kwargs: Any) -> Any:
         # Check if token usage exists in the llm_output
         if response.llm_output and "token_usage" in response.llm_output:
             usage = response.llm_output["token_usage"]
@@ -50,3 +58,12 @@ class TokenTrackingCallback(BaseCallbackHandler):
             self.model_breakdown[model_name]["input_tokens"] += prompt_tokens
             self.model_breakdown[model_name]["output_tokens"] += completion_tokens
             self.model_breakdown[model_name]["cost"] += cost
+            
+            # Map cost to the specific agent stage based on run_id
+            stage_tag = self.run_id_to_tag.get(run_id, "Unknown Stage")
+            if stage_tag not in self.agent_breakdown:
+                self.agent_breakdown[stage_tag] = {"input_tokens": 0, "output_tokens": 0, "cost": 0.0}
+                
+            self.agent_breakdown[stage_tag]["input_tokens"] += prompt_tokens
+            self.agent_breakdown[stage_tag]["output_tokens"] += completion_tokens
+            self.agent_breakdown[stage_tag]["cost"] += cost
