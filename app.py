@@ -91,10 +91,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 AGENT_INFO = {
-    "retriever":         ("🔍", "Retriever Agent", "Searching web, arXiv, and documents"),
-    "analyzer":          ("🔬", "Analysis Agent", "Consulting Model Council & extracting insights"),
-    "reflection":        ("🤔", "Reflection Agent", "Checking for gaps and contradictions"),
-    "report_builder":    ("📝", "Report Builder", "Drafting the final Markdown report"),
+    "retriever":         ("🔍", "Retriever Agent", "[gpt-4o-mini] Searching web & documents"),
+    "analyzer":          ("🔬", "Analysis Agent", "[gpt-4o-mini + claude-haiku] Extracting insights"),
+    "reflection":        ("🤔", "Reflection Agent", "[gpt-4o-mini] Checking for gaps"),
+    "report_builder":    ("📝", "Report Builder", "[gpt-4o-mini] Drafting final report"),
 }
 
 def process_uploaded_files(files):
@@ -239,7 +239,7 @@ with tab_research:
                         detail = f"Gathered {total_sources} document chunks."
                     elif node_name == "analyzer":
                         insights = partial_state.get("insights", [])
-                        detail = f"Model Council synthesized {len(insights)} key insights."
+                        detail = f"[gpt-4o-mini + claude-haiku] Council synthesized {len(insights)} key insights."
                     elif node_name == "reflection":
                         r = partial_state.get("reflection")
                         if r: detail = f"Gaps found: {len(r.coverage_gaps)}. Needs more research: {r.needs_more_research}"
