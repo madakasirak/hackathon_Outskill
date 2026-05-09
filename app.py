@@ -307,7 +307,8 @@ with tab_research:
                 input_tokens=tracker.input_tokens, 
                 output_tokens=tracker.output_tokens, 
                 estimated_cost=tracker.estimated_cost,
-                model_breakdown=json.dumps(tracker.model_breakdown)
+                model_breakdown=json.dumps(tracker.model_breakdown),
+                stage_breakdown=json.dumps(tracker.stage_breakdown)
             )
             
             sources_met.empty()
@@ -360,7 +361,7 @@ with tab_research:
                         
                         chat_tracker = TokenTrackingCallback()
                         try:
-                            response = get_fast_llm().invoke(messages, config={"callbacks": [chat_tracker]})
+                            response = get_fast_llm().invoke(messages, config={"callbacks": [chat_tracker], "tags": ["Follow-up Chat"]})
                             reply = response.content
                         except Exception as e:
                             reply = f"Error: {e}"
@@ -373,7 +374,8 @@ with tab_research:
                                 input_tokens=chat_tracker.input_tokens,
                                 output_tokens=chat_tracker.output_tokens,
                                 estimated_cost=chat_tracker.estimated_cost,
-                                model_breakdown=json.dumps(chat_tracker.model_breakdown)
+                                model_breakdown=json.dumps(chat_tracker.model_breakdown),
+                                stage_breakdown=json.dumps(chat_tracker.stage_breakdown)
                             )
                             
                         st.markdown(reply)
@@ -401,25 +403,41 @@ with tab_stats:
             with st.expander(f"📅 **{row['timestamp']}** | 🔍 {title_query} | 💰 Total Cost: ${row['estimated_cost']:.4f}"):
                 st.markdown(f"**Full Query**: {row['query']}")
                 
-                # Safely parse model breakdown
+                # Render the Stage → Model Breakdown (nested view)
                 try:
-                    breakdown_str = row.get("model_breakdown", "{}")
-                    # If it's a float (NaN) or None, set it to "{}"
-                    if not isinstance(breakdown_str, str):
-                        breakdown_str = "{}"
+                    stage_str = row.get("stage_breakdown", "{}")
+                    if not isinstance(stage_str, str):
+                        stage_str = "{}"
+                    stage_data = json.loads(stage_str)
                     
-                    breakdown = json.loads(breakdown_str)
-                    
-                    if breakdown:
-                        st.markdown("### Model Breakdown")
-                        for model, stats in breakdown.items():
-                            st.markdown(f"🔹 **{model}**")
-                            col1, col2, col3 = st.columns(3)
-                            col1.metric("Input Tokens", f"{stats['input_tokens']:,}")
-                            col2.metric("Output Tokens", f"{stats['output_tokens']:,}")
-                            col3.metric("Cost", f"${stats['cost']:.4f}")
+                    if stage_data:
+                        st.markdown("### 🔬 Pipeline Cost Breakdown")
+                        for stage, models in stage_data.items():
+                            # Calculate stage total cost
+                            stage_cost = sum(m["cost"] for m in models.values())
+                            st.markdown(f"📍 **{stage}** — `${stage_cost:.4f}`")
+                            for model, stats in models.items():
+                                col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+                                col1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;🔹 `{model}`")
+                                col2.metric("In", f"{stats['input_tokens']:,}")
+                                col3.metric("Out", f"{stats['output_tokens']:,}")
+                                col4.metric("Cost", f"${stats['cost']:.4f}")
                     else:
-                        st.markdown(f"**Models Used**: {row['models_used']}")
+                        # Fallback to flat model breakdown for older rows
+                        breakdown_str = row.get("model_breakdown", "{}")
+                        if not isinstance(breakdown_str, str):
+                            breakdown_str = "{}"
+                        breakdown = json.loads(breakdown_str)
+                        if breakdown:
+                            st.markdown("### Model Breakdown")
+                            for model, stats in breakdown.items():
+                                st.markdown(f"🔹 **{model}**")
+                                col1, col2, col3 = st.columns(3)
+                                col1.metric("Input Tokens", f"{stats['input_tokens']:,}")
+                                col2.metric("Output Tokens", f"{stats['output_tokens']:,}")
+                                col3.metric("Cost", f"${stats['cost']:.4f}")
+                        else:
+                            st.markdown(f"**Models Used**: {row['models_used']}")
                 except Exception as e:
                     st.markdown(f"**Models Used**: {row['models_used']}")
     else:

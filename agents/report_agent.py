@@ -28,6 +28,6 @@ Format as markdown with:
 Be concise but rigorous."""
     
     reasoning_llm = get_reasoning_llm()
-    response = reasoning_llm.invoke(prompt)
+    response = reasoning_llm.invoke(prompt, config={"tags": ["Report Builder"]})
     print("--- ReportBuilder: Report ready ---")
     return {"final_report": response.content}

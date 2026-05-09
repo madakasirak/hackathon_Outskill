@@ -20,16 +20,20 @@ def init_db():
         )
     ''')
     
-    # Safely add new column if it doesn't exist
+    # Safely add new columns if they don't exist
     try:
         c.execute("ALTER TABLE query_stats ADD COLUMN model_breakdown TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    try:
+        c.execute("ALTER TABLE query_stats ADD COLUMN stage_breakdown TEXT")
     except sqlite3.OperationalError:
         pass # Column already exists
         
     conn.commit()
     conn.close()
 
-def log_stats(query: str, models_used: list, input_tokens: int, output_tokens: int, estimated_cost: float, model_breakdown: str = "{}"):
+def log_stats(query: str, models_used: list, input_tokens: int, output_tokens: int, estimated_cost: float, model_breakdown: str = "{}", stage_breakdown: str = "{}"):
     init_db()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -38,9 +42,9 @@ def log_stats(query: str, models_used: list, input_tokens: int, output_tokens: i
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     c.execute('''
-        INSERT INTO query_stats (timestamp, query, models_used, input_tokens, output_tokens, estimated_cost, model_breakdown)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (timestamp, query, models_str, input_tokens, output_tokens, estimated_cost, model_breakdown))
+        INSERT INTO query_stats (timestamp, query, models_used, input_tokens, output_tokens, estimated_cost, model_breakdown, stage_breakdown)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (timestamp, query, models_str, input_tokens, output_tokens, estimated_cost, model_breakdown, stage_breakdown))
     
     conn.commit()
     conn.close()
