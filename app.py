@@ -273,8 +273,7 @@ with tab_research:
                 input_tokens=tracker.input_tokens, 
                 output_tokens=tracker.output_tokens, 
                 estimated_cost=tracker.estimated_cost,
-                model_breakdown=json.dumps(tracker.model_breakdown),
-                agent_breakdown=json.dumps(tracker.agent_breakdown)
+                model_breakdown=json.dumps(tracker.model_breakdown)
             )
             
             sources_met.empty()
@@ -377,24 +376,5 @@ with tab_stats:
                         st.markdown(f"**Models Used**: {row['models_used']}")
                 except Exception as e:
                     st.markdown(f"**Models Used**: {row['models_used']}")
-                
-                # Safely parse agent breakdown
-                try:
-                    agent_str = row.get("agent_breakdown", "{}")
-                    if not isinstance(agent_str, str):
-                        agent_str = "{}"
-                    agent_breakdown = json.loads(agent_str)
-                    
-                    if agent_breakdown:
-                        st.markdown("---")
-                        st.markdown("### Stage Breakdown")
-                        for stage, stats in agent_breakdown.items():
-                            st.markdown(f"🔹 **{stage}**")
-                            col1, col2, col3 = st.columns(3)
-                            col1.metric("Input Tokens", f"{stats['input_tokens']:,}")
-                            col2.metric("Output Tokens", f"{stats['output_tokens']:,}")
-                            col3.metric("Cost", f"${stats['cost']:.4f}")
-                except Exception as e:
-                    pass
     else:
         st.info("No queries have been run yet. Run a research query to see stats here!")
