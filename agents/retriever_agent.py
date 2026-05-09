@@ -44,7 +44,27 @@ def run(state: ResearchState, pdf_path: Optional[str] = None, limit: int = 5) ->
 
     # Use the user's research query to fetch relevant chunks
     query = state.query or ""
-    hits = retriever.get_relevant_documents(query)
+    # Call retriever with compatibility fallbacks for different langchain versions
+    try:
+        hits = retriever.get_relevant_documents(query)
+    except AttributeError:
+        # Some Retriever implementations expose a protected `_get_relevant_documents`
+        # or only async variants. Try falling back gracefully and supply `run_manager`
+        # as a keyword-only argument when required by some langchain versions.
+        if hasattr(retriever, "_get_relevant_documents"):
+            try:
+                hits = retriever._get_relevant_documents(query, run_manager=None)
+            except TypeError:
+                hits = retriever._get_relevant_documents(query)
+        elif hasattr(retriever, "aget_relevant_documents"):
+            import asyncio
+
+            try:
+                hits = asyncio.run(retriever.aget_relevant_documents(query, run_manager=None))
+            except TypeError:
+                hits = asyncio.run(retriever.aget_relevant_documents(query))
+        else:
+            raise
 
     state.retrieved_docs = []
     state.sources = []

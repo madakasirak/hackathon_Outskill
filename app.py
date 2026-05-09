@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import tempfile
 from typing import Optional
 
@@ -8,6 +9,8 @@ from graph.state import ResearchState
 from graph.workflow import run_workflow
 from services.llm import OpenRouterLLM
 
+
+load_dotenv()
 
 st.set_page_config(page_title="Multi-Agent Deep Researcher", layout="wide")
 

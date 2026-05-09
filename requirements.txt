@@ -8,3 +8,4 @@ faiss-cpu
 pypdf
 sentence-transformers
 transformers>=4.30
+dotenv
