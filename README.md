@@ -220,10 +220,6 @@ This system targets every axis of the hackathon scorecard:
 | Tests | ✅ pytest suite with mocked LLMs |
 | Live deploy | ✅ Streamlit Cloud (link above) |
 
-## Team
-
-*Replace this with your team members and roles.*
-
 ## License
 
 MIT — see `LICENSE` file.
