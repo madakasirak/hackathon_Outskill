@@ -84,8 +84,8 @@ Backup queries (if the first one's API hits rate limits):
 
 ```bash
 # Clone and enter the repo
-git clone https://github.com/your-org/deep-researcher
-cd deep-researcher
+git clone https://github.com/madakasirak/hackathon_Outskill.git
+cd hackathon_Outskill
 
 # Copy the env template and fill in your keys
 cp .env.example .env
