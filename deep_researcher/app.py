@@ -61,7 +61,7 @@ with st.sidebar:
     st.header("🔌 External Tools (Optional)")
     tavily_key = st.text_input("Tavily API Key", type="password")
     serpapi_key = st.text_input("SerpAPI Key", type="password")
-    st.caption("Arxiv is enabled by default.")
+    st.caption("Arxiv, Wikipedia, and DuckDuckGo are enabled by default and run in parallel.")
     
     st.markdown("---")
     st.header("📄 Local Knowledge (RAG)")
@@ -99,10 +99,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("""
     **Agents in this workflow:**
-    1. **Retriever Agent:** Gathers context (Arxiv, Tavily, SerpAPI)
+    1. **Retriever Agent:** Gathers context via parallel LangChain tools (Arxiv, Wikipedia, DuckDuckGo, Tavily, SerpAPI, Local RAG)
     2. **Analysis Agent:** Synthesizes & spots trends
-    3. **Insight Agent:** Extracts profound conclusions
-    4. **Report Agent:** Writes the structured markdown report
+    3. **Insight Agent:** Extracts profound conclusions (Model Council)
+    4. **Report Agent:** Writes the structured markdown report (Streaming)
     """)
     
     if api_key:
@@ -158,7 +158,7 @@ with st.expander("🗺️ View LangGraph Architecture", expanded=False):
     try:
         # Generate the graph visualization using Mermaid
         graph_png = workflow.get_graph().draw_mermaid_png()
-        st.image(graph_png, caption="Multi-Agent Workflow Architecture", use_container_width=True)
+        st.image(graph_png, caption="Multi-Agent Workflow Architecture", width="stretch")
     except Exception as e:
         st.error(f"Could not generate graph image: {e}")
 

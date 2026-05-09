@@ -13,62 +13,104 @@ def get_llm():
 
 def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     """Retrieves information from the web/documents using APIs."""
+    import concurrent.futures
     topic = state.get("topic")
     raw_data = []
     citations = []
     errors = state.get("errors", [])
     vector_store_path = state.get("local_vector_store")
     
-    # 0. Local Document RAG
-    if vector_store_path and os.path.exists(vector_store_path):
-        try:
-            from langchain_community.vectorstores import FAISS
-            from langchain_huggingface import HuggingFaceEmbeddings
-            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            vectorstore = FAISS.load_local(vector_store_path, embeddings, allow_dangerous_deserialization=True)
-            docs = vectorstore.similarity_search(topic, k=8)
-            if docs:
-                rag_content = "\n\n".join([d.page_content for d in docs])
-                raw_data.append(f"--- Local Documents Context ---\n{rag_content}")
-                citations.append("Local Uploaded Documents")
-        except Exception as e:
-            errors.append(f"Local RAG Error: {str(e)}")
+    def run_local_rag():
+        if vector_store_path and os.path.exists(vector_store_path):
+            try:
+                from langchain_community.vectorstores import FAISS
+                from langchain_huggingface import HuggingFaceEmbeddings
+                embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+                vectorstore = FAISS.load_local(vector_store_path, embeddings, allow_dangerous_deserialization=True)
+                docs = vectorstore.similarity_search(topic, k=8)
+                if docs:
+                    rag_content = "\n\n".join([d.page_content for d in docs])
+                    return (f"--- Local Documents Context ---\n{rag_content}", "Local Uploaded Documents", None)
+            except Exception as e:
+                return (None, None, f"Local RAG Error: {str(e)}")
+        return (None, None, None)
 
-    # 1. Arxiv Search
-    try:
-        from langchain_community.utilities import ArxivAPIWrapper
-        arxiv = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
-        arxiv_results = arxiv.run(topic)
-        if arxiv_results and "No good Arxiv Result was found" not in arxiv_results:
-            raw_data.append(f"--- Arxiv Results ---\n{arxiv_results}")
-            citations.append("Arxiv")
-    except Exception as e:
-        pass # Arxiv occasionally fails, ignore to continue with others
-
-    # 2. Tavily Search
-    if os.environ.get("TAVILY_API_KEY"):
+    def run_arxiv():
         try:
-            from langchain_community.tools.tavily_search import TavilySearchResults
-            tavily = TavilySearchResults(max_results=3)
-            # Tavily needs a dict or str. In newer versions, invoke(topic) works.
-            tavily_results = tavily.invoke({"query": topic})
-            if tavily_results:
-                raw_data.append(f"--- Tavily Results ---\n{str(tavily_results)}")
-                citations.append("Tavily")
+            from langchain_community.utilities import ArxivAPIWrapper
+            arxiv = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
+            arxiv_results = arxiv.run(topic)
+            if arxiv_results and "No good Arxiv Result was found" not in arxiv_results:
+                return (f"--- Arxiv Results ---\n{arxiv_results}", "Arxiv", None)
         except Exception as e:
-            errors.append(f"Tavily Error: {str(e)}")
+            pass # occasionally fails, ignore
+        return (None, None, None)
+
+    def run_tavily():
+        if os.environ.get("TAVILY_API_KEY"):
+            try:
+                from langchain_community.tools.tavily_search import TavilySearchResults
+                tavily = TavilySearchResults(max_results=3)
+                tavily_results = tavily.invoke({"query": topic})
+                if tavily_results:
+                    return (f"--- Tavily Results ---\n{str(tavily_results)}", "Tavily", None)
+            except Exception as e:
+                return (None, None, f"Tavily Error: {str(e)}")
+        return (None, None, None)
             
-    # 3. SerpAPI Search
-    if os.environ.get("SERPAPI_API_KEY"):
+    def run_serpapi():
+        if os.environ.get("SERPAPI_API_KEY"):
+            try:
+                from langchain_community.utilities import SerpAPIWrapper
+                serpapi = SerpAPIWrapper()
+                serp_results = serpapi.run(topic)
+                if serp_results:
+                    return (f"--- SerpAPI Results ---\n{serp_results}", "SerpAPI", None)
+            except Exception as e:
+                return (None, None, f"SerpAPI Error: {str(e)}")
+        return (None, None, None)
+
+    def run_wikipedia():
         try:
-            from langchain_community.utilities import SerpAPIWrapper
-            serpapi = SerpAPIWrapper()
-            serp_results = serpapi.run(topic)
-            if serp_results:
-                raw_data.append(f"--- SerpAPI Results ---\n{serp_results}")
-                citations.append("SerpAPI")
+            from langchain_community.utilities import WikipediaAPIWrapper
+            wikipedia = WikipediaAPIWrapper(top_k_results=3, doc_content_chars_max=1000)
+            wiki_results = wikipedia.run(topic)
+            if wiki_results and "No good Wikipedia Result was found" not in wiki_results:
+                return (f"--- Wikipedia Results ---\n{wiki_results}", "Wikipedia", None)
         except Exception as e:
-            errors.append(f"SerpAPI Error: {str(e)}")
+            return (None, None, f"Wikipedia Error: {str(e)}")
+        return (None, None, None)
+
+    def run_duckduckgo():
+        try:
+            from langchain_community.tools import DuckDuckGoSearchRun
+            ddg = DuckDuckGoSearchRun()
+            ddg_results = ddg.run(topic)
+            if ddg_results:
+                return (f"--- DuckDuckGo Results ---\n{ddg_results}", "DuckDuckGo", None)
+        except Exception as e:
+            return (None, None, f"DuckDuckGo Error: {str(e)}")
+        return (None, None, None)
+
+    # Run tools in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [
+            executor.submit(run_local_rag),
+            executor.submit(run_arxiv),
+            executor.submit(run_tavily),
+            executor.submit(run_serpapi),
+            executor.submit(run_wikipedia),
+            executor.submit(run_duckduckgo),
+        ]
+        
+        for future in concurrent.futures.as_completed(futures):
+            res_data, res_citation, res_error = future.result()
+            if res_data:
+                raw_data.append(res_data)
+            if res_citation:
+                citations.append(res_citation)
+            if res_error:
+                errors.append(res_error)
 
     # Fallback to LLM if no external results
     if not raw_data:

@@ -17,8 +17,8 @@ graph TD
 
   __start__ --> retriever
   retriever --> analysis
-  analysis --> insight
-  insight --> report
+  analysis --> insight (model council)
+  insight (model council) --> report
   report --> __end__
 ```
 
@@ -31,12 +31,15 @@ graph TD
    - (Optional) The user uploads PDF or TXT documents.
    - Using HuggingFace `all-MiniLM-L6-v2` embeddings, the documents are processed, chunked with `RecursiveCharacterTextSplitter`, and loaded into a local FAISS vector store index.
 
-2. **Retriever Agent**
-   - Retrieves information from a variety of sources:
+2. **Retriever Agent (Parallel Execution)**
+   - Retrieves information from a variety of sources in parallel using `concurrent.futures`.
+   - **Sources include:**
      - **Local RAG**: Queries the FAISS index for relevant uploaded context.
      - **Arxiv**: Searches scientific papers using the `arxiv` wrapper.
+     - **Wikipedia**: Searches for encyclopedic context.
+     - **DuckDuckGo**: Free dynamic web searching tool.
      - **Tavily / SerpAPI**: Performs web searches if API keys are provided.
-     - **LLM Fallback**: Leverages internal model domain knowledge if no external sources succeed or are provided.
+   - **Fallback**: Leverages internal model domain knowledge if no external sources succeed or are provided.
 
 3. **Analysis Agent**
    - Ingests the unified raw data from all retrieval tools.
