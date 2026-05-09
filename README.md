@@ -44,7 +44,7 @@ graph TD
 
 4. **Insight Agent (Model Council)**
    - Acts as an AI Model Council to generate more robust, objective conclusions.
-   - Prompts **two different foundation models** concurrently (e.g., OpenAI `gpt-4o-mini` and Anthropic `claude-3.5-sonnet`) with the same analysis and asks for their top forward-looking insights.
+   - Prompts **two different foundation models** concurrently (e.g., OpenAI `gpt-4o-mini` and Anthropic `claude-4.5-sonnet`) with the same analysis and asks for their top forward-looking insights.
    - Uses the primary LLM as the "Council President" to synthesize the results, explicitly highlighting:
      - The **Consensus** (similar points between the models).
      - The **Divergence** (distinct, unique, or contradictory points).
