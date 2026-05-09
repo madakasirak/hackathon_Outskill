@@ -7,6 +7,42 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from graph import create_research_graph
 
+def create_pdf(text_md):
+    from fpdf import FPDF
+    
+    class PDF(FPDF):
+        def header(self):
+            self.set_font('helvetica', 'B', 15)
+            self.cell(0, 10, 'Deep Research Report', border=False, ln=1, align='C')
+            self.ln(5)
+            
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('helvetica', 'I', 8)
+            self.cell(0, 10, f'Page {self.page_no()}', border=False, ln=0, align='C')
+
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Replace smart quotes and common unicode characters
+    replacements = {
+        '“': '"', '”': '"', "‘": "'", "’": "'",
+        '–': '-', '—': '-', '…': '...',
+        '\u200b': '', '\u202f': ' ', '\u00a0': ' ',
+        '•': '-', '·': '-',
+    }
+    for orig, rep in replacements.items():
+        text_md = text_md.replace(orig, rep)
+        
+    # Remove all remaining non-latin1 characters (like emojis) to avoid encoding errors
+    text_cleaned = ''.join(c if ord(c) < 256 else '' for c in text_md)
+    
+    # Use multi_cell for text
+    pdf.set_font("helvetica", size=11)
+    pdf.multi_cell(w=0, h=7, text=text_cleaned)
+    return pdf.output()
+
 st.set_page_config(page_title="Deep Researcher", page_icon="🔍", layout="wide")
 
 st.title("🤖 Multi-Agent AI Deep Researcher")
@@ -18,7 +54,7 @@ with st.sidebar:
     api_key = st.text_input("OpenRouter API Key *", type="password")
     model = st.selectbox(
         "Model",
-        ["openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
+        ["openai/gpt-4o-mini", "anthropic/claude-4.5-sonnet"],
         index=0
     )
     
@@ -34,6 +70,31 @@ with st.sidebar:
         accept_multiple_files=True,
         type=["pdf", "txt"]
     )
+    
+    st.markdown("---")
+    st.header("🛠️ Chat Actions")
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+        
+    if "messages" in st.session_state and len(st.session_state.messages) > 0:
+        last_report = None
+        for msg in reversed(st.session_state.messages):
+            if msg["role"] == "assistant":
+                last_report = msg["content"]
+                break
+        
+        if last_report:
+            try:
+                pdf_bytes = create_pdf(last_report)
+                st.download_button(
+                    label="📥 Download Last Report (PDF)",
+                    data=bytes(pdf_bytes),
+                    file_name="deep_research_report.pdf",
+                    mime="application/pdf"
+                )
+            except Exception as e:
+                st.error(f"Could not generate PDF: {e}")
     
     st.markdown("---")
     st.markdown("""

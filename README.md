@@ -42,9 +42,13 @@ graph TD
    - Ingests the unified raw data from all retrieval tools.
    - Uses LangChain to synthesize the data, identify core themes, spot trends, and detect contradictory viewpoints across the sources.
 
-4. **Insight Agent**
-   - Assesses the resulting analysis.
-   - Extracts the most profound, forward-looking insights or non-obvious conclusions based on the research.
+4. **Insight Agent (Model Council)**
+   - Acts as an AI Model Council to generate more robust, objective conclusions.
+   - Prompts **two different foundation models** concurrently (e.g., OpenAI `gpt-4o-mini` and Anthropic `claude-3.5-sonnet`) with the same analysis and asks for their top forward-looking insights.
+   - Uses the primary LLM as the "Council President" to synthesize the results, explicitly highlighting:
+     - The **Consensus** (similar points between the models).
+     - The **Divergence** (distinct, unique, or contradictory points).
+     - A final synthesized set of profound insights.
 
 5. **Report Agent (with Streaming)**
    - Drafts the final multi-section research report integrating findings, insights, and citations.

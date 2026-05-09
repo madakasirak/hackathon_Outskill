@@ -99,21 +99,54 @@ def analysis_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {"errors": [state.get("errors", []) + [str(e)]]}
 
+def get_council_llm(model_name: str):
+    return ChatOpenAI(
+        model=model_name,
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        streaming=False
+    )
+
 def insight_agent(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Extracts deep insights based on the analysis."""
+    """Extracts deep insights using a Model Council approach."""
     if "errors" in state and state["errors"]:
         return state
         
     analysis = state.get("analysis", "")
     topic = state.get("topic")
-    llm = get_llm()
     
     prompt = f"Based on the following analysis of '{topic}', what are the 3 most profound, forward-looking insights or non-obvious conclusions?\n\n{analysis}"
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        return {"insights": response.content}
+        # Prompt two different models for insights
+        llm_1 = get_council_llm("openai/gpt-4o-mini")
+        resp_1 = llm_1.invoke([HumanMessage(content=prompt)])
+        
+        llm_2 = get_council_llm("anthropic/claude-sonnet-4.5")
+        resp_2 = llm_2.invoke([HumanMessage(content=prompt)])
+        
+        # Council synthesis using the primary configured LLM
+        synthesis_llm = get_llm()
+        synthesis_prompt = f"""
+We asked two different AI models for their top insights on the topic '{topic}' based on the same analysis.
+
+Model 1 (OpenAI GPT-4o-mini) insights:
+{resp_1.content}
+
+Model 2 (Anthropic Claude 4.5 Sonnet) insights:
+{resp_2.content}
+
+Your task as the Council President is to compare their insights. 
+Provide a consolidated view highlighting:
+1. Similar points (Consensus)
+2. Dissimilar or distinct points (Divergence/Unique perspectives)
+3. Final synthesized profound insights.
+"""
+        synthesis_resp = synthesis_llm.invoke([HumanMessage(content=synthesis_prompt)])
+        return {"insights": synthesis_resp.content}
     except Exception as e:
-        return {"errors": [state.get("errors", []) + [str(e)]]}
+        error_list = state.get("errors", [])
+        error_list.append(f"Model Council Error: {str(e)}")
+        return {"errors": error_list}
 
 def report_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     """Drafts the final markdown report."""
