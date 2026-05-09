@@ -11,14 +11,14 @@ graph TD
   __start__([START])
   retriever([retriever])
   analysis([analysis])
-  insight([insight (model council)])
+  insight([insight])
   report([report])
   __end__([END])
 
   __start__ --> retriever
   retriever --> analysis
-  analysis --> insight (model council)
-  insight (model council) --> report
+  analysis --> insight
+  insight --> report
   report --> __end__
 ```
 
