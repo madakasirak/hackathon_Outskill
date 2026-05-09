@@ -1,142 +1,88 @@
-"""Streamlit UI for the Multi-Agent Deep Researcher.
-
-To run locally:
-    pip install streamlit
-    streamlit run app.py
-
-To run from Colab (uses ngrok for public URL):
-    !pip install streamlit pyngrok
-    !ngrok config add-authtoken YOUR_NGROK_TOKEN
-    !streamlit run app.py &
-    from pyngrok import ngrok
-    print(ngrok.connect(8501))
-
-YOUR TODO: this is a deliberately minimal starter. Polish it — your team's UI work
-shows up here. Specific upgrades worth making:
-  - File upload sidebar that calls ingest_documents()
-  - Past-session list (uses checkpointer threads)
-  - Live agent log via app.stream()
-  - Confidence badge in header
-  - Inline chart rendering
-  - Custom theming (matches your domain)
-"""
 import streamlit as st
 import os
+from graph import create_research_graph
 
-# ─── Page config ─────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Deep Researcher",
-    page_icon="🔬",
-    layout="wide",
-)
+st.set_page_config(page_title="Deep Researcher", page_icon="🔍", layout="wide")
 
-st.title("🔬 Multi-Agent Deep Researcher")
-st.caption("9-agent research pipeline · LangGraph · RAG · Multimodal · Memory")
+st.title("🤖 Multi-Agent AI Deep Researcher")
+st.markdown("A LangGraph-powered research system using OpenRouter.")
 
-# ─── Sidebar: keys + session control ─────────────────────────────────────────
+# Sidebar for configuration
 with st.sidebar:
-    st.header("Configuration")
-
-    openrouter_key = st.text_input("OpenRouter API Key", type="password",
-                                    value=os.environ.get("OPENROUTER_API_KEY", ""))
-    tavily_key = st.text_input("Tavily API Key", type="password",
-                                value=os.environ.get("TAVILY_API_KEY", ""))
-
-    st.divider()
-    st.subheader("Session")
-    thread_id = st.text_input("Thread ID (memory)", value="default-session",
-                               help="Same thread = continued research. Different = fresh start.")
-
-    st.divider()
-    # YOUR TODO: implement file upload that calls ingest_documents()
-    uploaded_files = st.file_uploader(
-        "Upload documents for grounded research",
-        accept_multiple_files=True,
-        type=['pdf', 'txt'],
+    st.header("⚙️ Configuration")
+    api_key = st.text_input("OpenRouter API Key", type="password")
+    model = st.selectbox(
+        "Model",
+        ["openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
+        index=0
     )
-    if uploaded_files and st.button("Ingest into RAG"):
-        # YOUR TODO: save files to /tmp, call ingest_documents([...paths...])
-        st.info("YOUR TODO: wire this to ingest_documents()")
+    st.markdown("---")
+    st.markdown("""
+    **Agents in this workflow:**
+    1. **Retriever Agent:** Gathers context
+    2. **Analysis Agent:** Synthesizes & spots trends
+    3. **Insight Agent:** Extracts profound conclusions
+    4. **Report Agent:** Writes the structured markdown report
+    """)
+    
+    if api_key:
+        os.environ["OPENROUTER_API_KEY"] = api_key
+        os.environ["OPENROUTER_MODEL"] = model
 
-# ─── Validate keys ───────────────────────────────────────────────────────────
-if not openrouter_key or not tavily_key:
-    st.warning("Add your OpenRouter and Tavily keys in the sidebar to begin.")
-    st.stop()
+# Main content
+topic = st.text_input("Enter a research topic:", placeholder="e.g. Impact of AI agents on software engineering")
 
-os.environ["OPENROUTER_API_KEY"] = openrouter_key
-os.environ["TAVILY_API_KEY"] = tavily_key
-
-# ─── Lazy import the graph (after keys are set) ──────────────────────────────
-@st.cache_resource
-def load_app():
-    """Import and compile the graph once per session."""
-    # YOUR TODO: refactor your notebook into a `core/` package and import here.
-    # Example:
-    #   from core.graph import build_app
-    #   return build_app()
-    st.error("YOUR TODO: refactor notebook into core/graph.py and import build_app()")
-    st.stop()
-
-# ─── Main: query input + run ─────────────────────────────────────────────────
-st.subheader("Research Query")
-query = st.text_area(
-    "What do you want to research?",
-    value="How are GLP-1 drugs reshaping food and beverage company strategy?",
-    height=80,
-)
-
-col1, col2 = st.columns([1, 5])
-run_clicked = col1.button("🔍 Research", type="primary", use_container_width=True)
-
-# ─── Run ─────────────────────────────────────────────────────────────────────
-if run_clicked:
-    app = load_app()
-    initial_state = {
-        "query": query,
-        "raw_findings": [], "documents": [], "fact_checks": [],
-        "iteration": 0, "source_assessments": [],
-    }
-    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 30}
-
-    # Live agent log
-    log_container = st.empty()
-    agent_log = []
-
-    with st.spinner("Agents researching..."):
-        # YOUR TODO: stream events with app.stream() and update log_container live.
-        # Example:
-        #   for step in app.stream(initial_state, config=config):
-        #       for node, update in step.items():
-        #           agent_log.append(f"→ {node}: {list(update.keys())}")
-        #           log_container.code("\n".join(agent_log))
-        try:
-            result = app.invoke(initial_state, config=config)
-        except Exception as e:
-            st.error(f"Run failed: {e}")
-            st.stop()
-
-    # ─── Render report ───────────────────────────────────────────────────────
-    st.success("Research complete")
-
-    # YOUR TODO: confidence badge in a colored header based on source_assessments
-    st.subheader("📄 Final Report")
-    st.markdown(result.get("final_report", "_No report produced._"))
-
-    # YOUR TODO: render chart_path inline if it exists
-    if result.get("chart_path") and os.path.exists(result["chart_path"]):
-        st.image(result["chart_path"], caption="Generated by Visualization Agent")
-
-    # YOUR TODO: expandable section showing each agent's outputs (insights,
-    # fact-checks, contradictions, source assessments) for transparency.
-    with st.expander("🔍 Agent details"):
-        st.json({
-            "iterations": result.get("iteration"),
-            "insights": result.get("insights", []),
-            "fact_checks": [fc.dict() if hasattr(fc, 'dict') else str(fc)
-                           for fc in result.get("fact_checks", [])],
-            "source_count": len(result.get("documents", [])),
-        })
-
-# ─── Footer ──────────────────────────────────────────────────────────────────
-st.divider()
-st.caption("Built for the Engineering Accelerator hackathon · LangGraph + LangChain + ChromaDB")
+if st.button("Start Deep Research", type="primary"):
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        st.error("Please enter your OpenRouter API Key in the sidebar.")
+    elif not topic:
+        st.warning("Please enter a research topic to proceed.")
+    else:
+        with st.spinner("Initializing Deep Research Agents..."):
+            workflow = create_research_graph()
+            
+            st.info(f"Initiating research protocol for: **{topic}**")
+            progress_container = st.container()
+            
+            initial_state = {"topic": topic, "errors": []}
+            
+            try:
+                with progress_container:
+                    stages = ["Retriever", "Analysis", "Insight", "Report"]
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    final_state = {}
+                    step = 0
+                    
+                    # Stream state updates straight from the LangGraph workflow
+                    for output in workflow.stream(initial_state):
+                        for node_name, state_update in output.items():
+                            step += 1
+                            progress = min(step / len(stages), 1.0)
+                            progress_bar.progress(progress)
+                            status_text.markdown(f"🟢 **Agent Active:** `{node_name.upper()}`")
+                            
+                            # Merge state updates dictionary
+                            if isinstance(state_update, dict):
+                                final_state.update(state_update)
+                
+                st.success("Research Protocol Complete!")
+                
+                # Render results
+                st.markdown("---")
+                st.markdown("## 📊 Final Research Report")
+                st.markdown(final_state.get("final_report", "Report generation failed. Please check logs."))
+                
+                with st.expander("🔍 View Agent Internal Thoughts & Intermediary Steps"):
+                    st.markdown("### 1. Retriever Agent Data")
+                    st.write(final_state.get("raw_data", []))
+                    
+                    st.markdown("### 2. Analysis Agent Thoughts")
+                    st.write(final_state.get("analysis", ""))
+                    
+                    st.markdown("### 3. Insight Agent Thoughts")
+                    st.write(final_state.get("insights", ""))
+                    
+            except Exception as e:
+                st.error(f"An unexpected error occurred during execution: {str(e)}")
