@@ -1,7 +1,5 @@
 # 🔬 Multi-Agent Researcher
 
-**by Group 12**
-
 An elite, multi-agent AI framework for comprehensive, multi-source research investigations. Built on LangGraph with a Model Council for multi-perspective synthesis, granular pipeline cost tracking, and a premium Streamlit UI. Submitted for the Engineering Accelerator hackathon.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -195,6 +193,23 @@ When **Auto-select** is chosen, the Model Council uses two different models (GPT
 | **LLM Independence** | ✅ Dynamic dropdown lets you switch models on the fly — all via OpenRouter |
 | **Follow-up Chat** | ✅ Context-aware follow-up chat with per-question cost tracking |
 | **Observability** | ✅ Nested stage→model pipeline cost breakdown for full transparency |
+
+## APP Screen Shots
+**Home Screen**
+<img width="1916" height="952" alt="image" src="https://github.com/user-attachments/assets/a4343054-33c9-4560-967c-4a57a5ce375f" />
+
+**Agent Pipeline Processng**
+<img width="1726" height="922" alt="Screenshot 2026-05-10 at 1 35 56 AM" src="https://github.com/user-attachments/assets/e1545d19-9bc2-4d56-8e28-0d00ff0e7049" />
+
+**Research Summary / Reporting**
+<img width="1682" height="840" alt="image" src="https://github.com/user-attachments/assets/1795eb72-fe67-48bb-bcfe-12f99d4bcb70" />
+
+**FollowUp Questions**
+<img width="1622" height="585" alt="image" src="https://github.com/user-attachments/assets/fabeb1e4-99d9-4991-8abe-d4aa08249b5c" />
+
+**Conversation History / Model Costing Dashboard**
+<img width="1651" height="575" alt="image" src="https://github.com/user-attachments/assets/a76eb5d3-78f1-4454-ae78-f10e5bd9d89b" />
+
 
 ## 📜 License
 
