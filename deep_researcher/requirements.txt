@@ -11,3 +11,7 @@ tavily-python>=0.3.3
 arxiv>=2.1.0
 pymupdf>=1.24.4
 httpx>=0.27.0
+faiss-cpu>=1.8.0
+pypdf>=4.0.0
+sentence-transformers>=2.6.1
+langchain-huggingface>=0.0.3

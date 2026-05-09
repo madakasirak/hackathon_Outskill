@@ -16,7 +16,23 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     raw_data = []
     citations = []
     errors = state.get("errors", [])
+    vector_store_path = state.get("local_vector_store")
     
+    # 0. Local Document RAG
+    if vector_store_path and os.path.exists(vector_store_path):
+        try:
+            from langchain_community.vectorstores import FAISS
+            from langchain_huggingface import HuggingFaceEmbeddings
+            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            vectorstore = FAISS.load_local(vector_store_path, embeddings, allow_dangerous_deserialization=True)
+            docs = vectorstore.similarity_search(topic, k=8)
+            if docs:
+                rag_content = "\n\n".join([d.page_content for d in docs])
+                raw_data.append(f"--- Local Documents Context ---\n{rag_content}")
+                citations.append("Local Uploaded Documents")
+        except Exception as e:
+            errors.append(f"Local RAG Error: {str(e)}")
+
     # 1. Arxiv Search
     try:
         from langchain_community.utilities import ArxivAPIWrapper

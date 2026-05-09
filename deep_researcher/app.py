@@ -28,6 +28,14 @@ with st.sidebar:
     st.caption("Arxiv is enabled by default.")
     
     st.markdown("---")
+    st.header("📄 Local Knowledge (RAG)")
+    uploaded_files = st.file_uploader(
+        "Upload Documents (PDF, TXT)",
+        accept_multiple_files=True,
+        type=["pdf", "txt"]
+    )
+    
+    st.markdown("---")
     st.markdown("""
     **Agents in this workflow:**
     1. **Retriever Agent:** Gathers context (Arxiv, Tavily, SerpAPI)
@@ -45,7 +53,43 @@ with st.sidebar:
         os.environ["SERPAPI_API_KEY"] = serpapi_key
 
 # Main content
-topic = st.text_input("Enter a research topic:", placeholder="e.g. Impact of AI agents on software engineering")
+def process_uploaded_files(files):
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import FAISS
+    import tempfile
+    
+    docs = []
+    for file in files:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.name.split('.')[-1]}") as f:
+            f.write(file.getvalue())
+            temp_path = f.name
+            
+        try:
+            if file.name.lower().endswith(".pdf"):
+                loader = PyPDFLoader(temp_path)
+                docs.extend(loader.load())
+            elif file.name.lower().endswith(".txt"):
+                loader = TextLoader(temp_path, encoding="utf-8")
+                docs.extend(loader.load())
+        except Exception as e:
+            st.error(f"Error loading {file.name}: {e}")
+        finally:
+            os.remove(temp_path)
+            
+    if not docs:
+        return None
+        
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    splits = text_splitter.split_documents(docs)
+    
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    vectorstore = FAISS.from_documents(splits, embeddings)
+    
+    index_path = "temp_faiss_index"
+    vectorstore.save_local(index_path)
+    return index_path
 
 workflow = create_research_graph()
 
@@ -57,70 +101,93 @@ with st.expander("🗺️ View LangGraph Architecture", expanded=False):
     except Exception as e:
         st.error(f"Could not generate graph image: {e}")
 
-if st.button("Start Deep Research", type="primary"):
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        st.error("Please enter your OpenRouter API Key in the sidebar.")
-    elif not topic:
-        st.warning("Please enter a research topic to proceed.")
-    else:
-        with st.spinner("Initializing Deep Research Agents..."):
-            workflow = create_research_graph()
-            
-            st.info(f"Initiating research protocol for: **{topic}**")
-            progress_container = st.container()
-            
-            initial_state = {"topic": topic, "errors": []}
-            
-            try:
-                with progress_container:
-                    stages = ["Retriever", "Analysis", "Insight", "Report"]
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
-                    
-                    final_state = {}
-                    step = 0
-                    
-                    # Stream state updates straight from the LangGraph workflow
-                    for output in workflow.stream(initial_state):
-                        for node_name, state_update in output.items():
-                            step += 1
-                            progress = min(step / len(stages), 1.0)
-                            progress_bar.progress(progress)
-                            status_text.markdown(f"🟢 **Agent Active:** `{node_name.upper()}`")
-                            
-                            # Merge state updates dictionary
-                            if isinstance(state_update, dict):
-                                final_state.update(state_update)
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# React to user input
+if prompt := st.chat_input("Enter a research topic, ask a question, or query your uploaded documents..."):
+    # Display user message in chat message container
+    st.chat_message("user").markdown(prompt)
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("assistant"):
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            st.error("Please enter your OpenRouter API Key in the sidebar.")
+        else:
+            with st.spinner("Initializing Deep Research Agents..."):
+                local_index_path = None
+                if uploaded_files:
+                    st.info("Embedding uploaded documents (this may take a moment)...")
+                    local_index_path = process_uploaded_files(uploaded_files)
+
+                # Initialize state
+                initial_state = {"topic": prompt, "errors": []}
+                if local_index_path:
+                    initial_state["local_vector_store"] = local_index_path
                 
-                st.success("Research Protocol Complete!")
+                progress_container = st.container()
                 
-                # Render results
-                st.markdown("---")
-                st.markdown("## 📊 Final Research Report")
-                st.markdown(final_state.get("final_report", "Report generation failed. Please check logs."))
-                
-                with st.expander("🔍 View Agent Internal Thoughts & Intermediary Steps"):
-                    st.markdown("### 1. Retriever Agent Data")
-                    raw_data = final_state.get("raw_data", [])
-                    if isinstance(raw_data, list):
-                        for i, data_chunk in enumerate(raw_data):
-                            st.text_area(f"Raw Data Context {i+1}", value=data_chunk, height=150)
-                    else:
-                        st.write(raw_data)
+                try:
+                    with progress_container:
+                        st.info(f"Initiating research protocol for: **{prompt}**")
+                        stages = ["Retriever", "Analysis", "Insight", "Report"]
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        final_state = {}
+                        step = 0
+                        
+                        # Stream state updates straight from the LangGraph workflow
+                        for output in workflow.stream(initial_state):
+                            for node_name, state_update in output.items():
+                                step += 1
+                                progress = min(step / len(stages), 1.0)
+                                progress_bar.progress(progress)
+                                status_text.markdown(f"🟢 **Agent Active:** `{node_name.upper()}`")
+                                
+                                # Merge state updates dictionary
+                                if isinstance(state_update, dict):
+                                    final_state.update(state_update)
                     
-                    st.markdown(f"**Citations:** {', '.join(final_state.get('citations', []))}")
+                    st.success("Research Protocol Complete!")
                     
-                    st.markdown("### 2. Analysis Agent Thoughts")
-                    st.write(final_state.get("analysis", ""))
+                    # Render results
+                    report_content = final_state.get("final_report", "Report generation failed. Please check logs.")
+                    st.markdown("## 📊 Final Research Report")
+                    st.markdown(report_content)
                     
-                    st.markdown("### 3. Insight Agent Thoughts")
-                    st.write(final_state.get("insights", ""))
+                    # Add assistant response to chat history
+                    st.session_state.messages.append({"role": "assistant", "content": report_content})
                     
-                    errors = final_state.get("errors", [])
-                    if errors:
-                        st.error("Errors during execution:")
-                        for err in errors:
-                            st.write(err)
-                    
-            except Exception as e:
-                st.error(f"An unexpected error occurred during execution: {str(e)}")
+                    with st.expander("🔍 View Agent Internal Thoughts & Intermediary Steps"):
+                        st.markdown("### 1. Retriever Agent Data")
+                        raw_data = final_state.get("raw_data", [])
+                        if isinstance(raw_data, list):
+                            for i, data_chunk in enumerate(raw_data):
+                                st.text_area(f"Raw Data Context {i+1}", value=data_chunk, height=150)
+                        else:
+                            st.write(raw_data)
+                        
+                        st.markdown(f"**Citations:** {', '.join(final_state.get('citations', []))}")
+                        
+                        st.markdown("### 2. Analysis Agent Thoughts")
+                        st.write(final_state.get("analysis", ""))
+                        
+                        st.markdown("### 3. Insight Agent Thoughts")
+                        st.write(final_state.get("insights", ""))
+                        
+                        errors = final_state.get("errors", [])
+                        if errors:
+                            st.error("Errors during execution:")
+                            for err in errors:
+                                st.write(err)
+                        
+                except Exception as e:
+                    st.error(f"An unexpected error occurred during execution: {str(e)}")
