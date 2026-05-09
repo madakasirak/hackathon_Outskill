@@ -87,7 +87,7 @@ streamlit run app.py --server.port 8080
 4. Paste your API key (links are provided in the UI to get one for free).
 5. (Optional) Enter a **Tavily API key** for better web search.
 6. Attach any documents you want the agents to read.
-7. Enter your research query and hit **Run Analysis**.
+7. Enter your research query and hit **🚀 Run Analysis**.
 
 ---
 
@@ -106,4 +106,4 @@ streamlit run app.py --server.port 8080
 
 ## License
 
-MIT — use freely, attribution to Mamta appreciated.
+MIT — use freely, attribution to Group 12 appreciated.
