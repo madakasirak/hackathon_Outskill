@@ -5,10 +5,10 @@ from graph.state import ResearchState
 
 # LangChain imports for RAG
 try:
-    from langchain.document_loaders import PyPDFLoader
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
-    from langchain.embeddings import HuggingFaceEmbeddings
-    from langchain.vectorstores import FAISS
+    from langchain_community.document_loaders import PyPDFLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import FAISS
 except Exception as e:
     raise ImportError(
         "langchain and related packages are required for FAISS RAG.\n"
