@@ -2,6 +2,54 @@
 
 This is a minimal, structured POC demonstrating a multi-agent deep research workflow using LangGraph, LangChain, Streamlit, and the OpenRouter API.
 
+## Architecture
+
+The workflow is orchestrated using LangGraph:
+
+```mermaid
+graph TD
+  __start__([START])
+  retriever([retriever])
+  analysis([analysis])
+  insight([insight])
+  report([report])
+  __end__([END])
+
+  __start__ --> retriever
+  retriever --> analysis
+  analysis --> insight
+  insight --> report
+  report --> __end__
+```
+
+*(Note: The Streamlit app also dynamically renders this diagram in the sidebar using `workflow.get_graph().draw_mermaid_png()` if dependencies support it.)*
+
+## Technical Details (Step-by-Step)
+
+1. **User Input & Document Upload (RAG)**
+   - The user provides a research topic via the Streamlit chat interface.
+   - (Optional) The user uploads PDF or TXT documents.
+   - Using HuggingFace `all-MiniLM-L6-v2` embeddings, the documents are processed, chunked with `RecursiveCharacterTextSplitter`, and loaded into a local FAISS vector store index.
+
+2. **Retriever Agent**
+   - Retrieves information from a variety of sources:
+     - **Local RAG**: Queries the FAISS index for relevant uploaded context.
+     - **Arxiv**: Searches scientific papers using the `arxiv` wrapper.
+     - **Tavily / SerpAPI**: Performs web searches if API keys are provided.
+     - **LLM Fallback**: Leverages internal model domain knowledge if no external sources succeed or are provided.
+
+3. **Analysis Agent**
+   - Ingests the unified raw data from all retrieval tools.
+   - Uses LangChain to synthesize the data, identify core themes, spot trends, and detect contradictory viewpoints across the sources.
+
+4. **Insight Agent**
+   - Assesses the resulting analysis.
+   - Extracts the most profound, forward-looking insights or non-obvious conclusions based on the research.
+
+5. **Report Agent (with Streaming)**
+   - Drafts the final multi-section research report integrating findings, insights, and citations.
+   - The LLM stream is captured using a custom `StreamlitCallbackHandler` tagged explicitly for this step, yielding a real-time type-writer effect constraint exclusively within the report step.
+
 ## Requirements
 - Python 3.11+
 - An [OpenRouter API Key](https://openrouter.ai/)

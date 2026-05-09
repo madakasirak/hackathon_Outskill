@@ -7,7 +7,8 @@ def get_llm():
     return ChatOpenAI(
         model=os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
         api_key=os.environ.get("OPENROUTER_API_KEY"),
-        base_url="https://openrouter.ai/api/v1"
+        base_url="https://openrouter.ai/api/v1",
+        streaming=True
     )
 
 def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -140,7 +141,7 @@ Feature these key insights prominently:
 Include a "Sources & Citations" section at the end utilizing: {citations}
 """
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        response = llm.invoke([HumanMessage(content=prompt)], config={"tags": ["report_agent"]})
         return {"final_report": response.content}
     except Exception as e:
         return {"final_report": f"## Report Generation Failed\n\nError: {str(e)}"}

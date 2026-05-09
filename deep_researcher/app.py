@@ -141,11 +141,35 @@ if prompt := st.chat_input("Enter a research topic, ask a question, or query you
                         progress_bar = st.progress(0)
                         status_text = st.empty()
                         
+                        from langchain_core.callbacks import BaseCallbackHandler
+                        
+                        class ReportStreamHandler(BaseCallbackHandler):
+                            def __init__(self, container):
+                                self.container = container
+                                self.text = ""
+                                self.is_reporting = False
+
+                            def on_chat_model_start(self, serialized, messages, **kwargs):
+                                tags = kwargs.get("tags", [])
+                                if "report_agent" in tags:
+                                    self.is_reporting = True
+                                    self.text = ""
+                                else:
+                                    self.is_reporting = False
+
+                            def on_llm_new_token(self, token: str, **kwargs) -> None:
+                                if self.is_reporting:
+                                    self.text += token
+                                    self.container.markdown(self.text)
+                        
+                        report_container = st.empty()
+                        stream_handler = ReportStreamHandler(report_container)
+                        
                         final_state = {}
                         step = 0
                         
                         # Stream state updates straight from the LangGraph workflow
-                        for output in workflow.stream(initial_state):
+                        for output in workflow.stream(initial_state, config={"callbacks": [stream_handler]}):
                             for node_name, state_update in output.items():
                                 step += 1
                                 progress = min(step / len(stages), 1.0)
@@ -158,10 +182,8 @@ if prompt := st.chat_input("Enter a research topic, ask a question, or query you
                     
                     st.success("Research Protocol Complete!")
                     
-                    # Render results
+                    # Store the final generated report in chat history
                     report_content = final_state.get("final_report", "Report generation failed. Please check logs.")
-                    st.markdown("## 📊 Final Research Report")
-                    st.markdown(report_content)
                     
                     # Add assistant response to chat history
                     st.session_state.messages.append({"role": "assistant", "content": report_content})
