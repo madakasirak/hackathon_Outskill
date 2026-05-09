@@ -33,14 +33,31 @@ graph TD
     ReportBuilder --> END((END))
 ```
 
-### The Four Agents
+## 🎬 Recommended Demo Query
 
-| Agent | Role | LLM / Tech |
+> *"Is nuclear energy net-positive for global climate goals when accounting for waste, costs, and accidents?"*
+
+This query reliably exercises the full pipeline:
+1. Retriever fires across 4 tools in parallel
+2. Analyzer's Model Council surfaces consensus + unique perspectives
+3. Reflection identifies contradictions (climate benefit vs. waste/safety)
+4. *Loop fires* — Retriever runs again with the gap as new query
+5. Final report shows insights from both rounds with contradictions flagged
+
+Backup queries (if the first one's API hits rate limits):
+- "How do GLP-1 drugs reshape food and beverage company strategy?"
+- "Can open-source LLMs replace enterprise SaaS copilots for sensitive workloads?"
+
+### The Four Agents (Mapped to Hackathon PDF Requirements)
+
+| PDF Requirement | Our Agent | What it does |
 |---|---|---|
-| **Retriever** | Dynamically routes queries to parallel search tools and FAISS. | Fast LLM + LangChain Tools |
-| **Analyzer** | Synthesizes raw findings into evidence-backed insights via "Model Council". | Fast LLM (GPT) + Council (Claude) |
-| **Reflection** | Identifies coverage gaps, contradictions, and determines if a loop is needed. | Reasoning LLM |
-| **ReportBuilder** | Compiles the final structured markdown report with citations. | Reasoning LLM |
+| *Contextual Retriever Agent* | `retriever_agent` | Dynamic tool routing across Tavily, ArXiv, Wikipedia, DuckDuckGo, and local FAISS — runs in parallel via ThreadPoolExecutor |
+| *Critical Analysis* + *Insight Generation* | `analyzer_agent` | Embeds findings into FAISS for grounding, runs Model Council (GPT-4o-mini + Claude Haiku), synthesizes cross-model consensus into insights |
+| *Report Builder Agent* | `report_builder_agent` | Compiles structured markdown report with citations, contradictions section |
+| Extra agent (per PDF: "any more agents you want to add") | `reflection_agent` | Identifies coverage gaps and contradictions; drives the conditional loop back to Retriever |
+
+*Note:* The `analyzer_agent` deliberately combines two PDF roles — Critical Analysis (RAG-grounded evidence assessment) and Insight Generation (Model Council synthesis) — because the Council pattern is most powerful when both responsibilities feed the same multi-model reasoning step.
 
 ## 💻 Tech Stack
 
