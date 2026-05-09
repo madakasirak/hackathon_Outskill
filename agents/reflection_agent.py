@@ -1,5 +1,5 @@
 from graph.state import ResearchState, ReflectionResult, MAX_ITERATIONS
-from services.llm import reasoning_llm
+from services.llm import get_reasoning_llm
 
 def reflection_agent(state: ResearchState) -> dict:
     """Reviews the generated insights. If there are gaps, triggers a self-correction loop back to Retriever."""
@@ -9,6 +9,7 @@ def reflection_agent(state: ResearchState) -> dict:
     
     print(f"--- Reflection (Iter {iteration}): Reviewing insights against original query ---")
     
+    reasoning_llm = get_reasoning_llm()
     structured_llm = reasoning_llm.with_structured_output(ReflectionResult)
     
     prompt = f"""You are a critical reviewer evaluating a research report draft.

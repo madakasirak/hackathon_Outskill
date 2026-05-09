@@ -13,7 +13,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from services.rag import load_user_faiss
 
 from graph.state import ResearchState
-from services.llm import fast_llm
+from services.llm import get_fast_llm
 from tools.utilities import parse_pdf
 
 # Initialize Tools Once
@@ -97,6 +97,7 @@ def retriever_agent(state: ResearchState) -> dict:
     ONLY return the tool names, no markdown. Example: TAVILY, WIKIPEDIA
     """
     
+    fast_llm = get_fast_llm()
     try:
         decision = fast_llm.invoke([HumanMessage(content=decision_prompt)])
         selected_tools = [t.strip().upper() for t in decision.content.split(",")]

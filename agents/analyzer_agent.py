@@ -1,20 +1,10 @@
 import os
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from graph.state import ResearchState
-from services.llm import fast_llm, OPENROUTER_BASE, OPENROUTER_HEADERS
+from services.llm import get_fast_llm, get_council_llm
 from services.rag import embeddings
-
-def _get_council_llm(model_name: str, temperature: float = 0.5):
-    return ChatOpenAI(
-        model=model_name,
-        openai_api_key=os.environ.get("OPENROUTER_API_KEY", "dummy"),
-        openai_api_base=OPENROUTER_BASE,
-        temperature=temperature,
-        default_headers=OPENROUTER_HEADERS,
-    )
 
 def analyzer_agent(state: ResearchState) -> dict:
     """Embeds retrieved docs into FAISS, does similarity search, and synthesizes insights using a Model Council."""
@@ -48,12 +38,21 @@ EVIDENCE FROM RAG:
 """
     print(f"--- Analyzer: Consulting Model Council for '{query}' ---")
     
+    fast_llm = get_fast_llm()
+    selected_model = os.environ.get("LLM_MODEL", "openai/gpt-4o-mini")
+    
     try:
-        # Council Member 1: Default fast model (GPT-4o-mini)
+        # Council Member 1: Selected model (default temperature)
         member1_resp = fast_llm.invoke([HumanMessage(content=prompt)])
         
-        # Council Member 2: Alternative model (e.g., Claude Haiku or higher temp GPT)
-        member2_llm = _get_council_llm("anthropic/claude-3-haiku")
+        # Council Member 2: Alternative perspective
+        if "auto" in selected_model.lower() or "Auto-select" in selected_model:
+            # Auto mode: use a completely different model for diverse perspectives
+            member2_llm = get_council_llm("anthropic/claude-3-haiku")
+        else:
+            # Specific model selected: simulate council with higher temperature for creative divergence
+            member2_llm = get_council_llm(selected_model, temperature=0.7)
+            
         member2_resp = member2_llm.invoke([HumanMessage(content=prompt)])
         
         # Synthesis by Council President

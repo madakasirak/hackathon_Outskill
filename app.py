@@ -138,25 +138,27 @@ with st.sidebar:
     st.markdown("## 🔑 Enter your Key here")
     
     st.markdown("<h5 style='color: #f8fafc; margin-top: 20px; margin-bottom: 5px; font-size: 14px;'>🤖 AI Provider</h5>", unsafe_allow_html=True)
-    provider = st.selectbox("AI Provider", ["Google Gemini", "OpenRouter (Recommended)", "OpenAI", "Anthropic"], index=1, label_visibility="collapsed")
+    provider = st.selectbox("AI Provider", ["OpenRouter (All Models)", "Google Gemini", "OpenAI", "Anthropic"], index=0, label_visibility="collapsed")
     
     st.markdown("<h5 style='color: #f8fafc; margin-top: 15px; margin-bottom: 5px; font-size: 14px;'>⚙️ Model Selection</h5>", unsafe_allow_html=True)
-    if "OpenRouter" in provider:
-        models = ["Auto-select (gpt-4o-mini + claude-3-haiku)"]
-    elif "Gemini" in provider:
-        models = ["gemini-2.0-flash", "gemini-1.5-pro"]
+    # All models routed through OpenRouter — the prefix tells OpenRouter which provider to use
+    if "Gemini" in provider:
+        models = ["google/gemini-2.0-flash-001", "google/gemini-1.5-pro"]
     elif "OpenAI" in provider:
-        models = ["gpt-4o", "gpt-4o-mini"]
+        models = ["openai/gpt-4o", "openai/gpt-4o-mini"]
+    elif "Anthropic" in provider:
+        models = ["anthropic/claude-3.5-sonnet", "anthropic/claude-3-haiku"]
     else:
-        models = ["claude-3-5-sonnet", "claude-3-haiku"]
-    st.selectbox("Model Selection", models, label_visibility="collapsed")
+        # OpenRouter auto: show all popular models
+        models = ["Auto-select (gpt-4o-mini + claude-3-haiku)", "openai/gpt-4o-mini", "openai/gpt-4o", "google/gemini-2.0-flash-001", "anthropic/claude-3.5-sonnet", "anthropic/claude-3-haiku"]
+    selected_model = st.selectbox("Model Selection", models, label_visibility="collapsed")
     
     st.markdown("<h5 style='color: #f8fafc; margin-top: 25px; margin-bottom: 5px; font-size: 14px;'>🔑 Authentication</h5>", unsafe_allow_html=True)
     env_or_key = os.getenv("OPENROUTER_API_KEY", "")
     col_input, col_status = st.columns([3, 1])
     
     with col_input:
-        api_key = st.text_input("Authentication", type="password", placeholder="API Key...", label_visibility="collapsed")
+        api_key = st.text_input("Authentication", type="password", placeholder="OpenRouter API Key...", label_visibility="collapsed")
         if not api_key: api_key = env_or_key
     with col_status:
         if env_or_key or api_key:
@@ -168,10 +170,20 @@ with st.sidebar:
     
     st.markdown("<h5 style='color: #f8fafc; margin-top: 25px; margin-bottom: 5px; font-size: 14px;'>🌐 Web Search API</h5>", unsafe_allow_html=True)
     env_tavily = os.getenv("TAVILY_API_KEY", "")
-    tavily_key = st.text_input("Web Search API", type="password", placeholder="Tavily API Key (Optional)...", label_visibility="collapsed")
-    if not tavily_key: tavily_key = env_tavily
+    col_tav_input, col_tav_status = st.columns([3, 1])
     
+    with col_tav_input:
+        tavily_key = st.text_input("Web Search API", type="password", placeholder="Tavily Key (Optional)...", label_visibility="collapsed")
+        if not tavily_key: tavily_key = env_tavily
+    with col_tav_status:
+        if env_tavily or tavily_key:
+            st.markdown("<div style='color: #4ade80; font-size: 12px; margin-top: 10px;'>✅ Loaded</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div style='color: #94a3b8; font-size: 12px; margin-top: 10px;'>Optional</div>", unsafe_allow_html=True)
+    
+    # Everything routes through OpenRouter
     if api_key: os.environ["OPENROUTER_API_KEY"] = api_key
+    os.environ["LLM_MODEL"] = selected_model
     if tavily_key: os.environ["TAVILY_API_KEY"] = tavily_key
 
 @st.cache_resource

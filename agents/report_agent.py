@@ -1,5 +1,5 @@
 from graph.state import ResearchState
-from services.llm import reasoning_llm
+from services.llm import get_reasoning_llm
 
 def report_builder_agent(state: ResearchState) -> dict:
     """Takes the synthesized insights and formats them into a final markdown report."""
@@ -27,6 +27,7 @@ Format as markdown with:
 
 Be concise but rigorous."""
     
+    reasoning_llm = get_reasoning_llm()
     response = reasoning_llm.invoke(prompt)
     print("--- ReportBuilder: Report ready ---")
     return {"final_report": response.content}
