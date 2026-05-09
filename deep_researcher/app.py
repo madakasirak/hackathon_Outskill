@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from graph import create_research_graph
+from deep_researcher.graph import create_research_graph
 
 st.set_page_config(page_title="Deep Researcher", page_icon="🔍", layout="wide")
 
