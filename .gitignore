@@ -12,10 +12,21 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.DS_Store
 
 # LangGraph checkpoints
 checkpoints.db
 checkpoints.db-journal
+checkpoints.db-shm
+checkpoints.db-wal
 
-# Chroma DB
+# Custom Stats DB
+stats.db
+
+# Vector Databases
 chroma_db/
+temp_faiss_index/
+
+# Temporary / Scratch files
+scratch/
+uv.lock
