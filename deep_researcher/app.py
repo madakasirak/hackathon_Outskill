@@ -5,7 +5,7 @@ import sys
 # Ensure local imports work when run from outside the deep_researcher directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from graph import create_research_graph
+from graph.graph import create_research_graph
 
 def create_pdf(text_md):
     from fpdf import FPDF
@@ -54,7 +54,7 @@ with st.sidebar:
     api_key = st.text_input("OpenRouter API Key *", type="password")
     model = st.selectbox(
         "Model",
-        ["anthropic/claude-4.5-sonnet","openai/gpt-4o-mini"],
+        ["openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
         index=0
     )
     
@@ -99,10 +99,15 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("""
     **Agents in this workflow:**
-    1. **Retriever Agent:** Gathers context via parallel LangChain tools (Arxiv, Wikipedia, DuckDuckGo, Tavily, SerpAPI, Local RAG)
-    2. **Analysis Agent:** Synthesizes & spots trends
-    3. **Insight Agent:** Extracts profound conclusions (Model Council)
-    4. **Report Agent:** Writes the structured markdown report (Streaming)
+    1. **Planner:** Devises the approach.
+    2. **Retriever:** Gathers context (Arxiv, Wikipedia, DuckDuckGo, Tavily, SerpAPI, Local RAG)
+    3. **Source Reliability:** Evaluates trustedness.
+    4. **Multimodal:** Handles image/video inputs (placeholder).
+    5. **Analyzer:** Synthesizes & spots trends.
+    6. **Fact Checker:** Validates accuracy against sources.
+    7. **Reflection:** Identifies contradictions/gaps, dynamically loops back.
+    8. **Visualization:** Recommends visual aids.
+    9. **Report Builder:** Drafts final comprehensive output.
     """)
     
     if api_key:
@@ -198,7 +203,7 @@ if prompt := st.chat_input("Enter a research topic, ask a question, or query you
                 try:
                     with progress_container:
                         st.info(f"Initiating research protocol for: **{prompt}**")
-                        stages = ["Retriever", "Analysis", "Insight", "Report"]
+                        stages = ["Planner", "Retriever", "SourceReliability", "Multimodal", "Analyzer", "FactChecker", "Reflection", "Visualization", "ReportBuilder"]
                         progress_bar = st.progress(0)
                         status_text = st.empty()
                         
@@ -250,7 +255,10 @@ if prompt := st.chat_input("Enter a research topic, ask a question, or query you
                     st.session_state.messages.append({"role": "assistant", "content": report_content})
                     
                     with st.expander("🔍 View Agent Internal Thoughts & Intermediary Steps"):
-                        st.markdown("### 1. Retriever Agent Data")
+                        st.markdown("### 1. Planner")
+                        st.write(final_state.get("plan", ""))
+                        
+                        st.markdown("### 2. Retriever Agent Data")
                         raw_data = final_state.get("raw_data", [])
                         if isinstance(raw_data, list):
                             for i, data_chunk in enumerate(raw_data):
@@ -260,11 +268,20 @@ if prompt := st.chat_input("Enter a research topic, ask a question, or query you
                         
                         st.markdown(f"**Citations:** {', '.join(final_state.get('citations', []))}")
                         
-                        st.markdown("### 2. Analysis Agent Thoughts")
+                        st.markdown("### 3. Source Reliability")
+                        st.write(final_state.get("reliability_scores", ""))
+                        
+                        st.markdown("### 4. Analyzer Thoughts")
                         st.write(final_state.get("analysis", ""))
                         
-                        st.markdown("### 3. Insight Agent Thoughts")
-                        st.write(final_state.get("insights", ""))
+                        st.markdown("### 5. Fact Checking Results")
+                        st.write(final_state.get("fact_checking_results", ""))
+                        
+                        st.markdown("### 6. Reflection Feedback")
+                        st.write(final_state.get("reflection_feedback", ""))
+                        
+                        st.markdown("### 7. Visualization Suggestions")
+                        st.write(final_state.get("visualizations", ""))
                         
                         errors = final_state.get("errors", [])
                         if errors:

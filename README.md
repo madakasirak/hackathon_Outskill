@@ -1,6 +1,29 @@
 # Python Multi-Agent Deep Researcher POC
 
-This is a minimal, structured POC demonstrating a multi-agent deep research workflow using LangGraph, LangChain, Streamlit, and the OpenRouter API.
+This is a structured POC demonstrating a multi-agent deep research workflow using LangGraph, LangChain, Streamlit, and the OpenRouter API. It utilizes an advanced, multi-step pipeline with dynamic loops for iterative reflection.
+
+## Project Structure
+
+```text
+deep_researcher/
+├── app.py                      # Main Streamlit UI
+├── requirements.txt            # Python dependencies
+├── agents/                     # Specialized agent implementations
+│   ├── planner_agent.py
+│   ├── retriever_agent.py
+│   ├── source_reliability_agent.py
+│   ├── multimodal_agent.py
+│   ├── analyzer_agent.py
+│   ├── fact_checker_agent.py
+│   ├── reflection_agent.py
+│   ├── visualization_agent.py
+│   └── report_builder_agent.py
+├── graph/                      # LangGraph definition and state
+│   ├── graph.py
+│   └── state.py
+└── utils/                      # Utilities
+    └── llm_utils.py
+```
 
 ## Architecture
 
@@ -9,57 +32,78 @@ The workflow is orchestrated using LangGraph:
 ```mermaid
 graph TD
   __start__([START])
+  planner([planner])
   retriever([retriever])
-  analysis([analysis])
-  insight([insight])
-  report([report])
+  source_reliability([source_reliability])
+  multimodal([multimodal])
+  analyzer([analyzer])
+  fact_checker([fact_checker])
+  reflection([reflection])
+  visualization([visualization])
+  report_builder([report_builder])
   __end__([END])
 
-  __start__ --> retriever
-  retriever --> analysis
-  analysis --> insight
-  insight --> report
-  report --> __end__
+  __start__ --> planner
+  planner --> retriever
+  retriever --> source_reliability
+  source_reliability --> multimodal
+  multimodal --> analyzer
+  analyzer --> fact_checker
+  fact_checker --> reflection
+  
+  reflection -->|Needs More Research| retriever
+  reflection -->|Satisfied| visualization
+  
+  visualization --> report_builder
+  report_builder --> __end__
 ```
 
 *(Note: The Streamlit app also dynamically renders this diagram in the sidebar using `workflow.get_graph().draw_mermaid_png()` if dependencies support it.)*
 
 ## Technical Details (Step-by-Step)
 
-1. **User Input & Document Upload (RAG)**
-   - The user provides a research topic via the Streamlit chat interface.
-   - (Optional) The user uploads PDF or TXT documents.
-   - Using HuggingFace `all-MiniLM-L6-v2` embeddings, the documents are processed, chunked with `RecursiveCharacterTextSplitter`, and loaded into a local FAISS vector store index.
+The workflow executes through specialized agents handling precise aspects of research:
 
-2. **Retriever Agent (Parallel Execution)**
+1. **Planner Agent**
+   - Devises a succinct research plan based on the user's initial topic.
+
+2. **Retriever Agent**
+   - Intelligently decides which search tools to invoke based on the topic and the plan.
    - Retrieves information from a variety of sources in parallel using `concurrent.futures`.
    - **Sources include:**
-     - **Local RAG**: Queries the FAISS index for relevant uploaded context.
+     - **Local RAG**: Queries the FAISS index for relevant uploaded document context.
      - **Arxiv**: Searches scientific papers using the `arxiv` wrapper.
      - **Wikipedia**: Searches for encyclopedic context.
      - **DuckDuckGo**: Free dynamic web searching tool.
      - **Tavily / SerpAPI**: Performs web searches if API keys are provided.
-   - **Fallback**: Leverages internal model domain knowledge if no external sources succeed or are provided.
 
-3. **Analysis Agent**
-   - Ingests the unified raw data from all retrieval tools.
-   - Uses LangChain to synthesize the data, identify core themes, spot trends, and detect contradictory viewpoints across the sources.
+3. **Source Reliability Agent**
+   - Assigns reliability scores to the retrieved sources to filter out untrusted constraints.
 
-4. **Insight Agent (Model Council)**
-   - Acts as an AI Model Council to generate more robust, objective conclusions.
-   - Prompts **two different foundation models** concurrently (e.g., OpenAI `gpt-4o-mini` and Anthropic `claude-4.5-sonnet`) with the same analysis and asks for their top forward-looking insights.
-   - Uses the primary LLM as the "Council President" to synthesize the results, explicitly highlighting:
-     - The **Consensus** (similar points between the models).
-     - The **Divergence** (distinct, unique, or contradictory points).
-     - A final synthesized set of profound insights.
+4. **Multimodal Agent**
+   - A placeholder stage intended for retrieving and processing images, charts, and video data.
 
-5. **Report Agent (with Streaming)**
-   - Drafts the final multi-section research report integrating findings, insights, and citations.
-   - The LLM stream is captured using a custom `StreamlitCallbackHandler` tagged explicitly for this step, yielding a real-time type-writer effect constraint exclusively within the report step.
+5. **Analyzer Agent**
+   - Synthesizes trends and extracts raw analysis from the trusted sources.
+
+6. **Fact Checker Agent (RAG)**
+   - Validates the intermediate analysis against the original source docs to ensure accuracy.
+
+7. **Reflection Agent**
+   - Acts as an internal critic. Evaluates if the research lacks crucial areas or has contradictory conclusions.
+   - **Looping Mechanism:** If gaps are found, it triggers the loop back to the Retriever Agent (with updated context) to get more targeted info.
+
+8. **Visualization Agent**
+   - Determines the best types of charts/metrics to display to the user based on the finalized research data.
+
+9. **Report Builder Agent (with Streaming)**
+   - Drafts the final multi-section markdown research report integrating fact-checked text, visualizations, and concrete citations.
+   - Outputs the response in a streaming type-writer fashion using callbacks.
 
 ## Requirements
 - Python 3.11+
 - An [OpenRouter API Key](https://openrouter.ai/)
+- Optional: API keys for advanced search providers (e.g. Tavily, SerpAPI)
 
 ## Setup & Run
 
