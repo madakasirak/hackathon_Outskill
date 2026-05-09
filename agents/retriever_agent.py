@@ -9,8 +9,8 @@ from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_community.utilities import ArxivAPIWrapper
-from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+from services.rag import load_user_faiss
 
 from graph.state import ResearchState
 from services.llm import fast_llm
@@ -22,16 +22,16 @@ wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=2, d
 ddg_tool = DuckDuckGoSearchRun()
 arxiv_tool = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
 
-def _run_faiss(query: str, faiss_path: str = "temp_faiss_index"):
-    if os.path.exists(faiss_path):
-        try:
-            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            vectorstore = FAISS.load_local(faiss_path, embeddings, allow_dangerous_deserialization=True)
-            docs = vectorstore.similarity_search(query, k=5)
-            return [{"page_content": d.page_content, "metadata": {"source": "local_rag"}} for d in docs]
-        except Exception as e:
-            print(f"FAISS error: {e}")
-    return []
+def _run_faiss(query: str):
+    vectorstore = load_user_faiss()
+    if vectorstore is None:
+        return []
+    try:
+        docs = vectorstore.similarity_search(query, k=5)
+        return [{"page_content": d.page_content, "metadata": {"source": "local_rag"}} for d in docs]
+    except Exception as e:
+        print(f"FAISS query error: {e}")
+        return []
 
 def _run_tavily(query: str):
     try:

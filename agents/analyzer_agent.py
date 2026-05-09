@@ -1,13 +1,11 @@
 import os
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from graph.state import ResearchState
 from services.llm import fast_llm, OPENROUTER_BASE, OPENROUTER_HEADERS
-
-embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+from services.rag import embeddings
 
 def _get_council_llm(model_name: str, temperature: float = 0.5):
     return ChatOpenAI(
