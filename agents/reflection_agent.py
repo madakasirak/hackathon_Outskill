@@ -32,6 +32,8 @@ Iteration {iteration}/{MAX_ITERATIONS}. Set needs_more_research=True ONLY if con
         r = ReflectionResult(coverage_gaps=[], contradictions=[], needs_more_research=False)
     
     # Force stop if we hit max iterations
+    # iteration is incremented to iteration+1 after this function returns.
+    # If that would equal MAX_ITERATIONS, we've used all rounds — force-stop.
     if iteration + 1 >= MAX_ITERATIONS:
         r.needs_more_research = False
         

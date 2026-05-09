@@ -16,4 +16,7 @@ class ResearchState(TypedDict):
     iteration: int
     final_report: str
 
+# Total retrieval rounds: initial pass + (MAX_ITERATIONS - 1) reflection loops.
+# Currently: 1 initial pass + 1 loop = 2 total rounds.
+# Set to 3 to allow 2 loops (more thorough, ~2x API cost).
 MAX_ITERATIONS = 2
