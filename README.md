@@ -1,6 +1,8 @@
-# 🔬 Multi-Agent AI Deep Researcher
+# 🔬 Multi-Agent Researcher
 
-A streamlined, high-performance 4-agent research assistant built on LangGraph. It produces fact-checked, source-rated research reports and features a Model Council for multi-perspective synthesis, robust token/billing tracking, and a premium Streamlit UI. Submitted for the Engineering Accelerator hackathon.
+**by Group 12**
+
+An elite, multi-agent AI framework for comprehensive, multi-source research investigations. Built on LangGraph with a Model Council for multi-perspective synthesis, granular pipeline cost tracking, and a premium Streamlit UI. Submitted for the Engineering Accelerator hackathon.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B)](https://streamlit.io/)
@@ -8,16 +10,17 @@ A streamlined, high-performance 4-agent research assistant built on LangGraph. I
 
 ---
 
-## 🌟 What it does
+## 🌟 What It Does
 
 Type a research question or upload documents. Four specialized agents collaborate to produce a structured, highly analytical report with:
 
 - **Dynamic Parallel Retrieval**: Automatically selects the best tools (Tavily, ArXiv, Wikipedia, DuckDuckGo) and fetches data concurrently.
-- **Local RAG (FAISS)**: Upload PDFs or TXT files directly in the UI. They are instantly indexed and searched.
-- **The Model Council**: The Analyzer agent consults multiple distinct LLMs (e.g., GPT-4o-mini and Claude 3 Haiku) to gain diverse perspectives, synthesizing them into profound insights.
+- **Local RAG (FAISS)**: Upload PDFs or TXT files directly in the UI via the "📎 Attach Documents" button. They are instantly indexed and searched.
+- **The Model Council**: The Analyzer agent consults multiple distinct LLMs (e.g., GPT-4o-mini and Claude 3 Haiku via OpenRouter) to gain diverse perspectives, synthesizing them into profound insights.
 - **Self-Correction via Reflection**: The system automatically detects coverage gaps or contradictions in the research and loops back to find missing information.
-- **Stats & Billing Dashboard**: A beautiful analytics dashboard tracks every API call, providing a detailed breakdown of input/output tokens and costs **per-model** (e.g., GPT vs Claude) for every query.
-- **Contextual Follow-up Chat**: After a report is generated, you can ask follow-up questions in a chat interface that strictly uses the retrieved evidence as context.
+- **Pipeline Cost Dashboard**: A dedicated analytics dashboard provides a **nested Stage → Model breakdown** of every query, showing exactly how much each agent stage (Retriever, Analyzer, Reflection, Report Builder) spent on each model.
+- **Contextual Follow-up Chat**: After a report is generated, you can ask follow-up questions in a chat interface that strictly uses the retrieved evidence as context. Each follow-up is also tracked in the dashboard.
+- **Dynamic Model Selection**: Switch between AI providers (OpenAI, Anthropic, Google Gemini) directly from the sidebar dropdown — all routed seamlessly through OpenRouter with a single API key.
 
 ## 🏗️ Architecture
 
@@ -62,11 +65,11 @@ Backup queries (if the first one's API hits rate limits):
 ## 💻 Tech Stack
 
 - **Orchestration**: LangGraph (conditional routing + persistent memory)
-- **LLM Gateway**: OpenRouter (one key, all providers)
+- **LLM Gateway**: OpenRouter (one key, all providers — GPT, Claude, Gemini)
 - **RAG**: FAISS + HuggingFace (`all-MiniLM-L6-v2`)
 - **Retrieval**: Tavily, ArXiv, Wikipedia, DuckDuckGo
 - **State & Memory**: LangGraph SqliteSaver checkpointer (`checkpoints.db`)
-- **Telemetry**: Custom SQLite Database (`stats.db`) for Token & Cost Tracking
+- **Telemetry**: Custom SQLite Database (`stats.db`) — per-stage, per-model token & cost tracking
 - **UI**: Streamlit with Custom CSS (Glassmorphism & glowing agent widgets)
 
 ## 🚀 Quick Start
@@ -93,8 +96,7 @@ cp .env.example .env
 # Set up the virtual environment and install dependencies using uv
 uv venv
 source .venv/bin/activate
-uv pip sync requirements.txt
-# Alternatively, use 'uv sync' if relying on pyproject.toml
+uv sync
 
 # Launch the Streamlit app
 streamlit run app.py
@@ -124,9 +126,10 @@ deep-researcher/
 │   └── workflow.py                      # Node and Edge assembly
 │
 ├── services/                            # Utilities & Integrations
-│   ├── callbacks.py                     # Token tracking and cost calculation
+│   ├── callbacks.py                     # Token tracking (stage→model nested breakdown)
 │   ├── db.py                            # SQLite stats database
-│   └── llm.py                           # OpenRouter LLM configurations
+│   ├── llm.py                           # Dynamic LLM factory (OpenRouter gateway)
+│   └── rag.py                           # Shared HuggingFace embeddings service
 │
 └── tools/                               # Custom Tools
     ├── utilities.py                     # PDF parsing and REPL
@@ -135,9 +138,48 @@ deep-researcher/
 
 ## 📊 The Dashboard
 
-This project includes a dedicated **Stats Dashboard** tab inside the Streamlit UI. It intercepts every LangChain model call to log `input_tokens` and `output_tokens`, matches them against a pricing matrix, and displays your lifetime API costs alongside a history of all your queries. 
+This project includes a dedicated **Stats Dashboard** tab inside the Streamlit UI. It intercepts every LangChain model call to log `input_tokens` and `output_tokens`, matches them against a pricing matrix, and displays your lifetime API costs alongside a history of all your queries.
 
-Each past query is displayed as an interactive, expandable row. Clicking on a query reveals a **Model Breakdown** table, showing you exactly how many tokens and fractional cents were spent on the different models used during that run (e.g., how much the `gpt-4o-mini` Retriever cost versus the `claude-3-haiku` Model Council synthesis).
+Each past query is displayed as an interactive, expandable row. Clicking on a query reveals a **🔬 Pipeline Cost Breakdown** — a nested, hierarchical view that shows:
+
+1. **Which agent stage** ran (Retriever, Analyzer, Analyzer Synthesis, Reflection, Report Builder)
+2. **Which model** was used within that stage (e.g., `openai/gpt-4o-mini`, `anthropic/claude-3-haiku`)
+3. **Exact input/output tokens and fractional cost** for each stage-model combination
+
+Follow-up chat questions are also tracked as separate `[Follow-up]` entries with their own cost breakdowns.
+
+### Example Dashboard Output
+
+```
+📍 Retriever — $0.0003
+    🔹 openai/gpt-4o-mini   | In: 500   | Out: 200  | $0.0003
+
+📍 Analyzer — $0.0029
+    🔹 openai/gpt-4o-mini   | In: 3,000 | Out: 1,500 | $0.0015
+    🔹 anthropic/claude-3-haiku | In: 1,373 | Out: 813 | $0.0014
+
+📍 Analyzer Synthesis — $0.0005
+    🔹 openai/gpt-4o-mini   | In: 1,200 | Out: 400  | $0.0005
+
+📍 Reflection — $0.0004
+    🔹 openai/gpt-4o-mini   | In: 1,500 | Out: 200  | $0.0004
+
+📍 Report Builder — $0.0003
+    🔹 openai/gpt-4o-mini   | In: 1,023 | Out: 508  | $0.0003
+```
+
+## 🎛️ Dynamic Model Selection
+
+The sidebar features **AI Provider** and **Model Selection** dropdowns. All models are routed through OpenRouter — the dropdown simply changes the model string:
+
+| Provider Filter | Available Models |
+|---|---|
+| OpenRouter (All Models) | Auto-select (gpt-4o-mini + claude-3-haiku), gpt-4o-mini, gpt-4o, gemini-2.0-flash, claude-3.5-sonnet, claude-3-haiku |
+| Google Gemini | gemini-2.0-flash-001, gemini-1.5-pro |
+| OpenAI | gpt-4o, gpt-4o-mini |
+| Anthropic | claude-3.5-sonnet, claude-3-haiku |
+
+When **Auto-select** is chosen, the Model Council uses two different models (GPT + Claude) for maximum diversity. When a specific model is selected, the Council simulates diverse perspectives by running the same model at different temperatures.
 
 ## 🏆 Hackathon Scorecard
 
@@ -149,9 +191,10 @@ Each past query is displayed as an interactive, expandable row. Clicking on a qu
 | **RAG Vector Store** | ✅ FAISS + HuggingFace Embeddings for local document QA |
 | **Multi-source Retrieval** | ✅ Parallel execution of Tavily, ArXiv, Wikipedia, DDG |
 | **Memory** | ✅ SqliteSaver checkpointer for state persistence |
-| **Production UI** | ✅ Premium Streamlit interface with glowing animations & stats tracking |
-| **LLM Independence** | ✅ OpenRouter configuration allows instant swapping between OpenAI, Anthropic, and Google models |
-| **Follow-up Chat** | ✅ Context-aware follow-up chat post-generation |
+| **Production UI** | ✅ Premium Streamlit interface with glowing animations & nested cost tracking |
+| **LLM Independence** | ✅ Dynamic dropdown lets you switch models on the fly — all via OpenRouter |
+| **Follow-up Chat** | ✅ Context-aware follow-up chat with per-question cost tracking |
+| **Observability** | ✅ Nested stage→model pipeline cost breakdown for full transparency |
 
 ## 📜 License
 
