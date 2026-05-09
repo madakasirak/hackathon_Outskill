@@ -22,3 +22,5 @@ python-dotenv>=1.0.0
 duckduckgo-search>=5.0.0
 faiss-cpu>=1.8.0
 sentence-transformers>=2.7.0
+langchain-huggingface>=0.1.0
+langgraph-checkpoint-sqlite>=2.0.0
