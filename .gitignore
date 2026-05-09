@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Environments
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# LangGraph checkpoints
+checkpoints.db
+checkpoints.db-journal
+
+# Chroma DB
+chroma_db/
