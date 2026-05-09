@@ -84,8 +84,7 @@ EVIDENCE FROM RAG:
     print(f"--- Analyzer: Council synthesized {len(insights)} insights ---")
     
     # Append to existing insights if we are in a reflection loop
-    existing_insights = state.get("insights", [])
-    if existing_insights:
-        existing_insights.append("\n--- New Insights from Reflection Loop ---")
-        
-    return {"insights": existing_insights + insights}
+    iteration = state.get("iteration", 0)
+    if iteration > 0:
+        insights = ["--- New Insights from Reflection Loop ---"] + insights
+    return {"insights": insights}

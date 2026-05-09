@@ -11,7 +11,7 @@ class ResearchState(TypedDict):
     query: str
     # Using a list of dicts for documents to avoid importing langchain classes here
     documents: Annotated[List[dict], add]
-    insights: List[str]
+    insights: Annotated[List[str], add]
     reflection: Optional[ReflectionResult]
     iteration: int
     final_report: str
