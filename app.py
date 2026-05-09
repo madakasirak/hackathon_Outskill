@@ -346,7 +346,7 @@ with tab_research:
                 with st.chat_message("user"): st.markdown(chat_q)
                 with st.chat_message("assistant"):
                     with st.spinner("Analyzing context..."):
-                        from services.llm import fast_llm
+                        from services.llm import get_fast_llm
                         from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
                         sys_prompt = f"Answer based strictly on the report and evidence:\n\nREPORT:\n{full_state['final_report']}\n\nEVIDENCE:\n"
                         for d in full_state.get('documents', [])[:15]:
@@ -358,7 +358,7 @@ with tab_research:
                         messages.append(HumanMessage(content=chat_q))
                         
                         try:
-                            response = fast_llm.invoke(messages)
+                            response = get_fast_llm().invoke(messages)
                             reply = response.content
                         except Exception as e:
                             reply = f"Error: {e}"
