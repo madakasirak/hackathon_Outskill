@@ -135,27 +135,44 @@ def process_uploaded_files(files):
 
 # ── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## ⚙️ Configuration")
-    with st.expander("🔑 Authentication", expanded=True):
-        env_or_key = os.getenv("OPENROUTER_API_KEY", "")
-        if env_or_key:
-            api_key = st.text_input("OpenRouter Key (Loaded)", type="password", placeholder="Override .env key...", help="Key is already loaded from .env. Type here to override.")
-            if not api_key: api_key = env_or_key
+    st.markdown("## 🔑 Enter your Key here")
+    
+    st.markdown("<h5 style='color: #f8fafc; margin-top: 20px; margin-bottom: 5px; font-size: 14px;'>🤖 AI Provider</h5>", unsafe_allow_html=True)
+    provider = st.selectbox("AI Provider", ["Google Gemini", "OpenRouter (Recommended)", "OpenAI", "Anthropic"], index=1, label_visibility="collapsed")
+    
+    st.markdown("<h5 style='color: #f8fafc; margin-top: 15px; margin-bottom: 5px; font-size: 14px;'>⚙️ Model Selection</h5>", unsafe_allow_html=True)
+    if "OpenRouter" in provider:
+        models = ["Auto-select (gpt-4o-mini + claude-3-haiku)"]
+    elif "Gemini" in provider:
+        models = ["gemini-2.0-flash", "gemini-1.5-pro"]
+    elif "OpenAI" in provider:
+        models = ["gpt-4o", "gpt-4o-mini"]
+    else:
+        models = ["claude-3-5-sonnet", "claude-3-haiku"]
+    st.selectbox("Model Selection", models, label_visibility="collapsed")
+    
+    st.markdown("<h5 style='color: #f8fafc; margin-top: 25px; margin-bottom: 5px; font-size: 14px;'>🔑 Authentication</h5>", unsafe_allow_html=True)
+    env_or_key = os.getenv("OPENROUTER_API_KEY", "")
+    col_input, col_status = st.columns([3, 1])
+    
+    with col_input:
+        api_key = st.text_input("Authentication", type="password", placeholder="API Key...", label_visibility="collapsed")
+        if not api_key: api_key = env_or_key
+    with col_status:
+        if env_or_key or api_key:
+            st.markdown("<div style='color: #4ade80; font-size: 12px; margin-top: 10px;'>✅ Loaded</div>", unsafe_allow_html=True)
         else:
-            api_key = st.text_input("OpenRouter API Key", type="password", placeholder="sk-or-v1-...")
-
-        env_tavily = os.getenv("TAVILY_API_KEY", "")
-        if env_tavily:
-            tavily_key = st.text_input("Tavily Key (Loaded)", type="password", placeholder="Override .env key...", help="Key is already loaded from .env. Type here to override.")
-            if not tavily_key: tavily_key = env_tavily
-        else:
-            tavily_key = st.text_input("Tavily API Key (Optional)", type="password", placeholder="tvly-...")
-        
-        if api_key: os.environ["OPENROUTER_API_KEY"] = api_key
-        if tavily_key: os.environ["TAVILY_API_KEY"] = tavily_key
-        
-    with st.expander("📁 Local Knowledge (RAG)", expanded=False):
-        uploaded_files = st.file_uploader("Upload Documents to index", accept_multiple_files=True, type=["pdf", "txt"])
+            st.markdown("<div style='color: #ef4444; font-size: 12px; margin-top: 10px;'>❌ Required</div>", unsafe_allow_html=True)
+            
+    st.markdown("<a href='https://openrouter.ai/keys' style='font-size: 12px; color: #3b82f6; text-decoration: none;'>🔗 Get API Key</a>", unsafe_allow_html=True)
+    
+    st.markdown("<h5 style='color: #f8fafc; margin-top: 25px; margin-bottom: 5px; font-size: 14px;'>🌐 Web Search API</h5>", unsafe_allow_html=True)
+    env_tavily = os.getenv("TAVILY_API_KEY", "")
+    tavily_key = st.text_input("Web Search API", type="password", placeholder="Tavily API Key (Optional)...", label_visibility="collapsed")
+    if not tavily_key: tavily_key = env_tavily
+    
+    if api_key: os.environ["OPENROUTER_API_KEY"] = api_key
+    if tavily_key: os.environ["TAVILY_API_KEY"] = tavily_key
 
 @st.cache_resource
 def load_app():
@@ -168,18 +185,24 @@ st.markdown("""
             <defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs>
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="url(#grad1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </svg>
-        <h1 style="margin: 0; font-size: 2.5rem; background: -webkit-linear-gradient(45deg, #4ade80, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Multi-Agent Deep Researcher</h1>
+        <h1 style="margin: 0; font-size: 2.5rem; background: -webkit-linear-gradient(45deg, #4ade80, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Multi-Agent Researcher</h1>
     </div>
-    <div style="font-size: 0.9rem; color: #94a3b8; font-weight: 500; margin-left: 54px; margin-top: -6px;">A 4-Agent LangGraph MVP</div>
+    <div style="font-size: 0.9rem; color: #94a3b8; font-weight: 500; margin-left: 54px; margin-top: -6px;">by Group 12</div>
 </div>
+<div style="margin-top: 15px; margin-bottom: 25px; font-size: 1.1rem; color: #cbd5e1;">An elite, multi-agent AI framework for comprehensive, multi-source research investigations.</div>
 """, unsafe_allow_html=True)
 
 # ── Tabs ────────────────────────────────────────────────────────────────
 tab_research, tab_stats = st.tabs(["🔍 Research Studio", "📊 Stats Dashboard"])
 
 with tab_research:
-    query = st.text_area("Research Query", value="How are GLP-1 drugs reshaping food and beverage company strategy?", height=80, label_visibility="collapsed")
-    col_fill, col_run = st.columns([3, 1])
+    query = st.text_area("Research Query", placeholder="Enter your research Query or upload documents (PDF, DOCX, PPTX, TXT, MD)...", height=80, label_visibility="collapsed")
+    col_upload, col_space, col_run = st.columns([1.5, 3, 1])
+    
+    with col_upload:
+        with st.popover("📎 Attach Documents", use_container_width=True):
+            uploaded_files = st.file_uploader("Upload Documents to index", accept_multiple_files=True, type=["pdf", "txt"], label_visibility="collapsed")
+            
     with col_run:
         run_btn = st.button("Run Analysis", type="primary", use_container_width=True)
 
