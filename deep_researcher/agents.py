@@ -20,8 +20,33 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
     errors = state.get("errors", [])
     vector_store_path = state.get("local_vector_store")
     
+    # Decide which tools to run using an LLM
+    decision_prompt = f"""
+    You are a research planning agent. Given the user's research topic: '{topic}', decide which of the following information retrieval tools should be used.
+    
+    Available tools:
+    - LOCAL RAG: Use if the topic implies referring to user's uploaded documents, local context, or specific provided data.
+    - ARXIV: Use ONLY for highly academic, scientific, mathematical, or physics research papers.
+    - WIKIPEDIA: Use for general knowledge, historical events, entities, and broader facts.
+    - DUCKDUCKGO: Use for current events, web searches, news, recent updates, or specific company/course information.
+    - TAVILY: Best for comprehensive AI web research and specific company/course information (requires API key).
+    - SERPAPI: Use for Google search results (requires API key).
+    
+    Return a comma-separated list of the EXACT tool names you want to use (from the capitalized names above). 
+    You MUST return ONLY the comma-separated tool names, without any other text, quotes, or markdown.
+    Example: DUCKDUCKGO, WIKIPEDIA, LOCAL RAG
+    """
+    
+    try:
+        decision_llm = get_llm()
+        decision_resp = decision_llm.invoke([HumanMessage(content=decision_prompt)])
+        selected_tools = [t.strip().upper() for t in decision_resp.content.split(",")]
+    except Exception as e:
+        # Fallback to run all if decision parsing fails
+        selected_tools = ["LOCAL RAG", "ARXIV", "WIKIPEDIA", "DUCKDUCKGO", "TAVILY", "SERPAPI"]
+
     def run_local_rag():
-        if vector_store_path and os.path.exists(vector_store_path):
+        if "LOCAL RAG" in selected_tools and vector_store_path and os.path.exists(vector_store_path):
             try:
                 from langchain_community.vectorstores import FAISS
                 from langchain_huggingface import HuggingFaceEmbeddings
@@ -36,20 +61,28 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
         return (None, None, None)
 
     def run_arxiv():
-        try:
-            from langchain_community.utilities import ArxivAPIWrapper
-            arxiv = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
-            arxiv_results = arxiv.run(topic)
-            if arxiv_results and "No good Arxiv Result was found" not in arxiv_results:
-                return (f"--- Arxiv Results ---\n{arxiv_results}", "Arxiv", None)
-        except Exception as e:
-            pass # occasionally fails, ignore
+        if "ARXIV" in selected_tools:
+            try:
+                from langchain_community.utilities import ArxivAPIWrapper
+                arxiv = ArxivAPIWrapper(top_k_results=3, load_max_docs=3)
+                arxiv_results = arxiv.run(topic)
+                if arxiv_results and "No good Arxiv Result was found" not in arxiv_results:
+                    return (f"--- Arxiv Results ---\n{arxiv_results}", "Arxiv", None)
+            except Exception as e:
+                pass # occasionally fails, ignore
         return (None, None, None)
 
     def run_tavily():
-        if os.environ.get("TAVILY_API_KEY"):
+        if "TAVILY" in selected_tools and os.environ.get("TAVILY_API_KEY"):
             try:
-                from langchain_community.tools.tavily_search import TavilySearchResults
+                try:
+                    from langchain_tavily import TavilySearch as TavilySearchResults
+                except ImportError:
+                    try:
+                        from langchain_tavily import TavilySearchResults
+                    except ImportError:
+                        from langchain_community.tools.tavily_search import TavilySearchResults
+                    
                 tavily = TavilySearchResults(max_results=3)
                 tavily_results = tavily.invoke({"query": topic})
                 if tavily_results:
@@ -59,7 +92,7 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
         return (None, None, None)
             
     def run_serpapi():
-        if os.environ.get("SERPAPI_API_KEY"):
+        if "SERPAPI" in selected_tools and os.environ.get("SERPAPI_API_KEY"):
             try:
                 from langchain_community.utilities import SerpAPIWrapper
                 serpapi = SerpAPIWrapper()
@@ -71,25 +104,27 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
         return (None, None, None)
 
     def run_wikipedia():
-        try:
-            from langchain_community.utilities import WikipediaAPIWrapper
-            wikipedia = WikipediaAPIWrapper(top_k_results=3, doc_content_chars_max=1000)
-            wiki_results = wikipedia.run(topic)
-            if wiki_results and "No good Wikipedia Result was found" not in wiki_results:
-                return (f"--- Wikipedia Results ---\n{wiki_results}", "Wikipedia", None)
-        except Exception as e:
-            return (None, None, f"Wikipedia Error: {str(e)}")
+        if "WIKIPEDIA" in selected_tools:
+            try:
+                from langchain_community.utilities import WikipediaAPIWrapper
+                wikipedia = WikipediaAPIWrapper(top_k_results=3, doc_content_chars_max=1000)
+                wiki_results = wikipedia.run(topic)
+                if wiki_results and "No good Wikipedia Result was found" not in wiki_results:
+                    return (f"--- Wikipedia Results ---\n{wiki_results}", "Wikipedia", None)
+            except Exception as e:
+                return (None, None, f"Wikipedia Error: {str(e)}")
         return (None, None, None)
 
     def run_duckduckgo():
-        try:
-            from langchain_community.tools import DuckDuckGoSearchRun
-            ddg = DuckDuckGoSearchRun()
-            ddg_results = ddg.run(topic)
-            if ddg_results:
-                return (f"--- DuckDuckGo Results ---\n{ddg_results}", "DuckDuckGo", None)
-        except Exception as e:
-            return (None, None, f"DuckDuckGo Error: {str(e)}")
+        if "DUCKDUCKGO" in selected_tools:
+            try:
+                from langchain_community.tools import DuckDuckGoSearchRun
+                ddg = DuckDuckGoSearchRun()
+                ddg_results = ddg.run(topic)
+                if ddg_results:
+                    return (f"--- DuckDuckGo Results ---\n{ddg_results}", "DuckDuckGo", None)
+            except Exception as e:
+                return (None, None, f"DuckDuckGo Error: {str(e)}")
         return (None, None, None)
 
     # Run tools in parallel
@@ -111,6 +146,9 @@ def retriever_agent(state: Dict[str, Any]) -> Dict[str, Any]:
                 citations.append(res_citation)
             if res_error:
                 errors.append(res_error)
+
+    # Add info about logic
+    citations.append(f"Tools Chosen by Agent: {', '.join(selected_tools)}")
 
     # Fallback to LLM if no external results
     if not raw_data:
@@ -174,7 +212,7 @@ We asked two different AI models for their top insights on the topic '{topic}' b
 Model 1 (OpenAI GPT-4o-mini) insights:
 {resp_1.content}
 
-Model 2 (Anthropic Claude 4.5 Sonnet) insights:
+Model 2 (Anthropic Claude 3.5 Sonnet) insights:
 {resp_2.content}
 
 Your task as the Council President is to compare their insights. 
