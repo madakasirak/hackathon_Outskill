@@ -357,11 +357,23 @@ with tab_research:
                             messages.append(HumanMessage(content=msg["content"]) if msg["role"] == "user" else AIMessage(content=msg["content"]))
                         messages.append(HumanMessage(content=chat_q))
                         
+                        chat_tracker = TokenTrackingCallback()
                         try:
-                            response = get_fast_llm().invoke(messages)
+                            response = get_fast_llm().invoke(messages, config={"callbacks": [chat_tracker]})
                             reply = response.content
                         except Exception as e:
                             reply = f"Error: {e}"
+                        
+                        # Log follow-up cost to the dashboard
+                        if chat_tracker.input_tokens > 0 or chat_tracker.output_tokens > 0:
+                            log_stats(
+                                query=f"[Follow-up] {chat_q[:100]}",
+                                models_used=list(chat_tracker.models_used),
+                                input_tokens=chat_tracker.input_tokens,
+                                output_tokens=chat_tracker.output_tokens,
+                                estimated_cost=chat_tracker.estimated_cost,
+                                model_breakdown=json.dumps(chat_tracker.model_breakdown)
+                            )
                             
                         st.markdown(reply)
                         st.session_state.chat_history.append({"role": "assistant", "content": reply})
