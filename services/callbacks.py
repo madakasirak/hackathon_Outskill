@@ -18,6 +18,7 @@ class TokenTrackingCallback(BaseCallbackHandler):
         self.output_tokens = 0
         self.models_used = set()
         self.estimated_cost = 0.0
+        self.model_breakdown = {}
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> Any:
         # Check if token usage exists in the llm_output
@@ -37,8 +38,15 @@ class TokenTrackingCallback(BaseCallbackHandler):
             pricing = MODEL_PRICING.get(model_name, None)
             if pricing:
                 cost = (prompt_tokens / 1_000_000) * pricing["input"] + (completion_tokens / 1_000_000) * pricing["output"]
-                self.estimated_cost += cost
             else:
                 # Default to gpt-4o-mini pricing as a rough fallback if model isn't mapped
                 cost = (prompt_tokens / 1_000_000) * 0.15 + (completion_tokens / 1_000_000) * 0.60
-                self.estimated_cost += cost
+                
+            self.estimated_cost += cost
+            
+            if model_name not in self.model_breakdown:
+                self.model_breakdown[model_name] = {"input_tokens": 0, "output_tokens": 0, "cost": 0.0}
+                
+            self.model_breakdown[model_name]["input_tokens"] += prompt_tokens
+            self.model_breakdown[model_name]["output_tokens"] += completion_tokens
+            self.model_breakdown[model_name]["cost"] += cost

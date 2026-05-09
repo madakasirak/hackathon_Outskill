@@ -265,13 +265,15 @@ with tab_research:
             st.session_state.full_state = app.get_state(config).values
             st.session_state.chat_history = []
             
+            import json
             # Log metrics to DB
             log_stats(
                 query=query, 
                 models_used=list(tracker.models_used), 
                 input_tokens=tracker.input_tokens, 
                 output_tokens=tracker.output_tokens, 
-                estimated_cost=tracker.estimated_cost
+                estimated_cost=tracker.estimated_cost,
+                model_breakdown=json.dumps(tracker.model_breakdown)
             )
             
             sources_met.empty()
@@ -347,16 +349,32 @@ with tab_stats:
     df = get_stats_history()
     
     if not df.empty:
-        # Reformat columns for a cleaner display
-        display_df = df.rename(columns={
-            "timestamp": "Time",
-            "query": "Research Topic",
-            "models_used": "Models",
-            "input_tokens": "Input Tokens",
-            "output_tokens": "Output Tokens",
-            "estimated_cost": "Cost ($)"
-        })
-        display_df["Cost ($)"] = display_df["Cost ($)"].apply(lambda x: f"${x:.4f}")
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        import json
+        for _, row in df.iterrows():
+            title_query = row['query'][:80] + "..." if len(row['query']) > 80 else row['query']
+            with st.expander(f"📅 **{row['timestamp']}** | 🔍 {title_query} | 💰 Total Cost: ${row['estimated_cost']:.4f}"):
+                st.markdown(f"**Full Query**: {row['query']}")
+                
+                # Safely parse model breakdown
+                try:
+                    breakdown_str = row.get("model_breakdown", "{}")
+                    # If it's a float (NaN) or None, set it to "{}"
+                    if not isinstance(breakdown_str, str):
+                        breakdown_str = "{}"
+                    
+                    breakdown = json.loads(breakdown_str)
+                    
+                    if breakdown:
+                        st.markdown("### Model Breakdown")
+                        for model, stats in breakdown.items():
+                            st.markdown(f"🔹 **{model}**")
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("Input Tokens", f"{stats['input_tokens']:,}")
+                            col2.metric("Output Tokens", f"{stats['output_tokens']:,}")
+                            col3.metric("Cost", f"${stats['cost']:.4f}")
+                    else:
+                        st.markdown(f"**Models Used**: {row['models_used']}")
+                except Exception as e:
+                    st.markdown(f"**Models Used**: {row['models_used']}")
     else:
         st.info("No queries have been run yet. Run a research query to see stats here!")
