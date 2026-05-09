@@ -25,16 +25,8 @@ class TokenTrackingCallback(BaseCallbackHandler):
         self.run_id_to_tag = {}
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], *, run_id: UUID, parent_run_id: Optional[UUID] = None, tags: Optional[List[str]] = None, metadata: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
-        known_stages = {"Retriever", "Analyzer", "Analyzer Synthesis", "Reflection", "Report Builder"}
-        stage_tag = "Unknown Stage"
-        
-        if tags:
-            for t in tags:
-                if t in known_stages:
-                    stage_tag = t
-                    break
-                    
-        self.run_id_to_tag[run_id] = stage_tag
+        # Default tag is "Unknown Stage" if not provided
+        self.run_id_to_tag[run_id] = tags[0] if tags and len(tags) > 0 else "Unknown Stage"
 
     def on_llm_end(self, response: LLMResult, *, run_id: UUID, parent_run_id: Optional[UUID] = None, **kwargs: Any) -> Any:
         # Check if token usage exists in the llm_output
