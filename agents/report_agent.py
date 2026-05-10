@@ -1,15 +1,32 @@
 from graph.state import ResearchState
 from services.llm import get_reasoning_llm
+from langchain_core.messages import SystemMessage, HumanMessage
+
+SYSTEM_PROMPT = """You are a senior investigative research analyst known for producing brutally honest, critically-balanced reports. You NEVER write marketing copy or one-sided summaries.
+
+Your reports are valued because they:
+- Present BOTH sides of every issue (strengths AND weaknesses)
+- Identify what the evidence does NOT say (information gaps)
+- Challenge assumptions rather than accept claims at face value
+- Provide specific data points, not vague generalities
+- Always include a "devil's advocate" perspective
+
+You will be PENALIZED if your report:
+- Only presents positive findings without criticism
+- Says "None identified" for contradictions (there are ALWAYS uncertainties)
+- Reads like promotional material
+- Lacks specific numbers, comparisons, or data points
+- Is shorter than 1000 words"""
 
 def report_builder_agent(state: ResearchState) -> dict:
-    """Takes the synthesized insights, raw evidence, and source metadata to produce a detailed, critically-balanced research report."""
+    """Produces a detailed, critically-balanced research report with inline citations."""
     query = state.get("query", "")
     insights = "\n".join([f"- {i}" for i in state.get("insights", [])])
     
     r = state.get("reflection")
-    contradictions = "\n".join([f"- {c}" for c in (r.contradictions if r else [])]) or "_None identified_"
+    contradictions = "\n".join([f"- {c}" for c in (r.contradictions if r else [])]) or "_None identified by reflection agent_"
     
-    # Include raw evidence snippets so the report can be detailed
+    # Include raw evidence
     docs = state.get("documents", [])
     evidence_chunks = []
     sources_list = []
@@ -32,73 +49,74 @@ def report_builder_agent(state: ResearchState) -> dict:
     
     print(f"--- ReportBuilder: Formatting detailed report with {len(evidence_chunks)} evidence chunks ---")
     
-    prompt = f"""You are a senior investigative research analyst. Your job is to produce a CRITICAL, BALANCED, and THOROUGH research report — not a summary or marketing copy.
+    user_prompt = f"""Write an investigative research report for: {query}
 
-RESEARCH QUESTION: {query}
-
-SYNTHESIZED INSIGHTS FROM MODEL COUNCIL:
+SYNTHESIZED INSIGHTS:
 {insights}
 
-RAW EVIDENCE FROM MULTIPLE SOURCES:
+RAW EVIDENCE:
 {evidence_text}
 
-CONTRADICTIONS IDENTIFIED:
+CONTRADICTIONS FROM REFLECTION AGENT:
 {contradictions}
 
-AVAILABLE SOURCES:
+SOURCES:
 {sources_text}
 
-Write an in-depth, critically-balanced research report using the structure below. You MUST be analytical, not promotional. Challenge assumptions. Identify what is NOT said. Highlight risks, limitations, and unknowns.
-
----
+REQUIRED STRUCTURE (you MUST include ALL of these sections — do NOT skip any):
 
 ## Executive Summary
-A comprehensive overview of findings, methodology, and key conclusions. State the bottom-line answer to the research question upfront. (2-3 paragraphs)
+State the bottom-line answer to the research question. Include the scope of evidence reviewed (how many sources, what types). 2-3 substantive paragraphs.
 
 ## Background & Context
-Why does this topic matter? What is the current landscape? Set the stage with relevant trends, market dynamics, or historical context.
+Why this topic matters now. Current landscape, market size, trends, or historical context. Use specific data.
 
 ## Key Findings
-Present 5-8 detailed findings. For each:
-- **Bold heading** summarizing the finding
-- 2-4 sentences of analysis with specific data points, numbers, or quotes from the evidence
-- Inline source citation: (Source Name) or (Tavily: url)
+5-8 findings, each with: **Bold title**, 2-4 sentences with specific evidence, inline citation (Source Name).
 
 ## Strengths & Advantages
-What are the clear positives? What works well? Support each point with evidence.
+What genuinely works well? What are the clear positives backed by evidence? Be specific with data.
 
 ## Weaknesses, Risks & Limitations
-What are the downsides, risks, or gaps? What could go wrong? What is missing from the available information? Be brutally honest — do NOT whitewash.
+THIS SECTION IS MANDATORY AND MUST BE SUBSTANTIVE.
+What are the downsides? What could go wrong? What is overpriced, overpromised, or unproven?
+If the evidence doesn't mention weaknesses, explicitly state: "The available evidence does not address [X], which itself is a red flag because..."
+Consider: cost concerns, time investment, opportunity cost, unverified claims, lack of independent reviews, market alternatives.
 
 ## Grey Areas & Uncertainties
-What remains unclear or debatable? Where do experts disagree? What claims lack sufficient evidence? What assumptions are being made?
+THIS SECTION IS MANDATORY AND MUST BE SUBSTANTIVE.
+What remains unclear? Where is the evidence insufficient to draw conclusions?
+What assumptions are being made? What would a skeptic ask?
+Consider: long-term outcomes, ROI data, comparison with free alternatives, survivorship bias, selection bias in testimonials.
 
 ## Comparative Analysis
-If applicable, how does this compare to alternatives or competitors? What are the trade-offs?
+How does this compare to alternatives? What are the trade-offs?
+If no direct comparisons exist in the evidence, state what the ideal comparison would be and why it's missing.
 
 ## Contradictions & Open Questions
-Discuss conflicting claims across sources. Why do these disagreements exist? What follow-up research is needed?
+Even if the reflection agent found none, YOU must identify at least 2-3 open questions that a thorough researcher would want answered. Nothing is ever 100% contradiction-free.
 
 ## Recommendations & Next Steps
-Actionable, evidence-based recommendations. Include what specific follow-up actions or research the reader should pursue.
+Actionable recommendations with caveats. What specific follow-up research should the reader do? What questions should they ask before acting?
 
 ## Sources
-List all sources referenced with full citations.
+Full list of all cited sources.
 
----
-
-CRITICAL GUIDELINES:
-- Be INVESTIGATIVE, not promotional. A good report challenges the subject, not just describes it.
-- Include PROS AND CONS for every major topic
-- Identify WHAT IS NOT SAID — gaps in available information are as important as what is found
-- Use specific numbers, data points, quotes, and examples from the evidence
-- Every major claim must have an inline citation
-- Use rich markdown: bold, bullet points, numbered lists, tables where appropriate
-- If the evidence is insufficient to draw a conclusion, SAY SO explicitly
-- Minimum 1000 words — this is a professional research deliverable
+ABSOLUTE REQUIREMENTS:
+1. Minimum 1000 words
+2. Weaknesses section MUST be at least 3 bullet points (find them or infer them)
+3. Grey Areas section MUST be at least 3 bullet points
+4. Every section must have content — no empty sections
+5. Use markdown: **bold**, bullet points, numbered lists
+6. Cite sources inline: (Tavily: url) or (Wikipedia) or (ArXiv)
+7. If evidence is one-sided, explicitly flag it: "⚠️ Note: Available evidence is predominantly positive, suggesting potential selection bias"
 """
     
     reasoning_llm = get_reasoning_llm()
-    response = reasoning_llm.invoke(prompt, config={"tags": ["Report Builder"]})
+    messages = [
+        SystemMessage(content=SYSTEM_PROMPT),
+        HumanMessage(content=user_prompt)
+    ]
+    response = reasoning_llm.invoke(messages, config={"tags": ["Report Builder"]})
     print("--- ReportBuilder: Report ready ---")
     return {"final_report": response.content}

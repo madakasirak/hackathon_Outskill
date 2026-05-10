@@ -204,7 +204,6 @@ with st.sidebar:
     os.environ["LLM_MODEL"] = selected_model
     if tavily_key: os.environ["TAVILY_API_KEY"] = tavily_key
 
-@st.cache_resource
 def load_app():
     return build_app()
 

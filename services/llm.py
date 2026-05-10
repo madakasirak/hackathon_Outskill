@@ -34,7 +34,7 @@ def get_reasoning_llm():
         model=_resolve_model(),
         openai_api_key=os.environ.get("OPENROUTER_API_KEY", "dummy"),
         openai_api_base=OPENROUTER_BASE, 
-        temperature=0.2,
+        temperature=0.4,
         default_headers=OPENROUTER_HEADERS,
     )
 
