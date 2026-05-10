@@ -263,18 +263,44 @@ with tab_research:
         
         st.markdown("### <br>Live Execution Graph", unsafe_allow_html=True)
         agent_placeholder = st.empty()
-        agent_log = []
+        agent_log = []  # list of (icon, name, detail, status, elapsed_sec)
+        current_iteration = 0
 
         def render_agents():
             html = ""
-            for icon, name, detail, status in agent_log:
+            prev_iteration = -1
+            for idx, (icon, name, detail, status, agent_time) in enumerate(agent_log):
                 css = {"active": "active", "done": "done", "error": "error"}.get(status, "")
                 badge = {"active": "⏳", "done": "✅", "error": "❌"}.get(status, "")
-                html += f'<div class="agent-widget {css}"><div style="font-weight:600; font-size:1.05rem; margin-bottom:2px;">{icon} {name} <span style="float:right">{badge}</span></div><div style="color:#94a3b8;">{detail}</div></div>'
+                time_str = f"{agent_time:.1f}s" if agent_time > 0 else "..."
+                
+                # Detect iteration boundaries for loop-back indicators
+                is_loop = (name == "Retriever Agent" and idx > 0 and 
+                          any(a[1] == "Reflection Agent" for a in agent_log[:idx]))
+                
+                if is_loop and prev_iteration != 1:
+                    html += '<div style="text-align:center; margin: 8px 0; color: #f59e0b; font-size: 0.85rem; font-weight: 600;">🔄 Reflection Loop — Retriever re-querying for coverage gaps</div>'
+                    prev_iteration = 1
+                
+                # Arrow connector between agents (except first)
+                if idx > 0 and not is_loop:
+                    html += '<div style="text-align:center; margin: 2px 0; color: #475569; font-size: 1.2rem;">↓</div>'
+                
+                html += f'''<div class="agent-widget {css}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-weight:600; font-size:1.05rem;">{icon} {name}</div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="color:#64748b; font-size:0.8rem; font-family:monospace;">⏱ {time_str}</span>
+                            <span style="font-size:1.1rem;">{badge}</span>
+                        </div>
+                    </div>
+                    <div style="color:#94a3b8; margin-top:4px; font-size:0.9rem;">{detail}</div>
+                </div>'''
             agent_placeholder.markdown(html, unsafe_allow_html=True)
 
         start = time.time()
         total_sources = 0
+        agent_start_time = start
 
         try:
             for event in app.stream(initial_state, config=config):
@@ -285,27 +311,44 @@ with tab_research:
                     if node_name == "retriever":
                         docs = partial_state.get("documents", [])
                         total_sources = len(docs)
-                        detail = f"Gathered {total_sources} document chunks."
+                        sources_by_type = {}
+                        for d in docs:
+                            src = d.get("metadata", {}).get("source", "unknown")
+                            sources_by_type[src] = sources_by_type.get(src, 0) + 1
+                        source_summary = " · ".join([f"{v} from {k}" for k, v in sources_by_type.items()])
+                        detail = f"Gathered {total_sources} chunks → {source_summary}"
                     elif node_name == "analyzer":
                         insights = partial_state.get("insights", [])
-                        detail = f"[gpt-4o-mini + claude-haiku] Council synthesized {len(insights)} key insights."
+                        detail = f"Model Council synthesized {len(insights)} key insights from cross-model analysis."
                     elif node_name == "reflection":
                         r = partial_state.get("reflection")
-                        if r: detail = f"Gaps found: {len(r.coverage_gaps)}. Needs more research: {r.needs_more_research}"
+                        if r:
+                            if r.needs_more_research:
+                                gaps = ", ".join(r.coverage_gaps[:2]) if r.coverage_gaps else "general"
+                                detail = f"⚠️ {len(r.coverage_gaps)} gap(s) detected: \"{gaps}\" → Triggering re-retrieval"
+                            else:
+                                detail = f"✓ Research sufficient. {len(r.contradictions)} contradiction(s) noted."
+                    elif node_name == "report_builder":
+                        detail = "Compiling detailed report with inline citations..."
                     
+                    now = time.time()
+                    # Mark previous agent as done with its elapsed time
                     if agent_log:
                         p = agent_log[-1]
-                        agent_log[-1] = (p[0], p[1], p[2], "done")
+                        agent_elapsed = now - agent_start_time
+                        agent_log[-1] = (p[0], p[1], p[2], "done", agent_elapsed)
 
-                    agent_log.append((icon, name, detail, "active"))
+                    agent_start_time = now
+                    agent_log.append((icon, name, detail, "active", 0))
                     render_agents()
 
-                    elapsed = time.time() - start
+                    elapsed = now - start
                     update_metrics(total_sources, name, elapsed)
 
             if agent_log:
                 p = agent_log[-1]
-                agent_log[-1] = (p[0], p[1], p[2], "done")
+                final_elapsed = time.time() - agent_start_time
+                agent_log[-1] = (p[0], p[1], p[2], "done", final_elapsed)
                 render_agents()
 
             elapsed = time.time() - start
@@ -335,7 +378,7 @@ with tab_research:
             st.error(f"❌ Execution Failure: {str(e)}")
             if agent_log:
                 p = agent_log[-1]
-                agent_log[-1] = (p[0], p[1], f"Error: {str(e)[:100]}", "error")
+                agent_log[-1] = (p[0], p[1], f"Error: {str(e)[:100]}", "error", 0)
                 render_agents()
 
     if "full_state" in st.session_state:
