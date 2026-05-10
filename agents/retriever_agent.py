@@ -82,20 +82,47 @@ def retriever_agent(state: ResearchState) -> dict:
         
     print(f"\n--- Retriever (Iter {iteration}): Analyzing query to select tools ---")
     
-    decision_prompt = f"""
-    You are a research planning agent. Topic: '{search_query}'.
-    Decide which of the following tools should be used.
-    Available tools:
-    - LOCAL RAG: Always include if the user might be referring to uploaded documents.
-    - ARXIV: For academic, scientific, or highly technical papers.
-    - WIKIPEDIA: For general knowledge, history, and broad facts.
-    - DUCKDUCKGO: For general web search.
-    - TAVILY: For deep AI web research and specific up-to-date facts.
-    - PDF: If a specific PDF file is requested (rare).
-    
-    Return a comma-separated list of the EXACT tool names you want to use.
-    ONLY return the tool names, no markdown. Example: TAVILY, WIKIPEDIA
-    """
+    decision_prompt = f"""You are a research planning agent. Your job is to select the RIGHT tools for the query — not all of them.
+
+QUERY: '{search_query}'
+
+AVAILABLE TOOLS:
+- LOCAL RAG: Search user's uploaded documents (PDF/TXT files indexed in FAISS)
+- ARXIV: Search academic research papers (math, physics, CS, biology, economics papers)
+- WIKIPEDIA: Look up established facts, definitions, history, general knowledge
+- DUCKDUCKGO: General web search for news, companies, products, current events
+- TAVILY: AI-powered deep web search — best for recent data, specific facts, industry analysis
+
+ROUTING RULES (follow strictly):
+
+1. DOCUMENT QUERIES (user asks about their uploaded files, "my document", "the PDF", course material):
+   → LOCAL RAG, TAVILY
+   Example: "Summarize the uploaded report" → LOCAL RAG
+   Example: "What does the document say about X?" → LOCAL RAG, TAVILY
+
+2. ACADEMIC/SCIENTIFIC RESEARCH (research papers, algorithms, scientific methods, theoretical topics):
+   → ARXIV, WIKIPEDIA, TAVILY
+   Example: "Transformer attention mechanisms" → ARXIV, WIKIPEDIA, TAVILY
+   Example: "Latest research on GLP-1 drugs" → ARXIV, TAVILY
+
+3. GENERAL KNOWLEDGE (history, definitions, well-known topics, "what is X"):
+   → WIKIPEDIA, TAVILY
+   Example: "What is nuclear energy?" → WIKIPEDIA, TAVILY
+
+4. CURRENT EVENTS / INDUSTRY (companies, products, market trends, recent news):
+   → TAVILY, DUCKDUCKGO
+   Example: "Tesla stock performance 2024" → TAVILY, DUCKDUCKGO
+   Example: "Outskill GenAI program review" → TAVILY, DUCKDUCKGO
+
+5. COMPREHENSIVE RESEARCH (broad multi-faceted questions, pros vs cons, policy debates):
+   → TAVILY, WIKIPEDIA, DUCKDUCKGO, ARXIV
+   Example: "Is nuclear energy net-positive for climate goals?" → TAVILY, WIKIPEDIA, DUCKDUCKGO, ARXIV
+
+IMPORTANT: If the user uploaded documents AND is asking a question, ALWAYS include LOCAL RAG alongside other tools.
+Select 2-4 tools maximum. Do NOT select all tools unless the query is truly comprehensive.
+
+Return ONLY a comma-separated list of tool names, nothing else.
+Example output: TAVILY, WIKIPEDIA"""
     
     fast_llm = get_fast_llm()
     try:
@@ -106,6 +133,11 @@ def retriever_agent(state: ResearchState) -> dict:
         selected_tools = ["TAVILY", "WIKIPEDIA", "DUCKDUCKGO", "ARXIV"]
 
     print(f"Selected Tools: {selected_tools}")
+    
+    # Auto-include LOCAL RAG if user has uploaded documents (FAISS index exists)
+    if load_user_faiss() is not None and "LOCAL RAG" not in selected_tools:
+        selected_tools.append("LOCAL RAG")
+        print("Auto-added LOCAL RAG (user documents detected)")
     
     all_docs = []
     
