@@ -328,7 +328,21 @@ with tab_research:
         if full_state and full_state.get("final_report"):
             st.success("✅ Research Protocol Completed")
             st.markdown("## 📄 Comprehensive Report")
-            st.markdown(full_state["final_report"])
+            
+            report_text = full_state["final_report"]
+            
+            # Stream the report word-by-word for a premium typing effect
+            if "report_streamed" not in st.session_state or st.session_state.get("last_report") != report_text:
+                import time as _t
+                def _stream_report():
+                    for word in report_text.split(" "):
+                        yield word + " "
+                        _t.sleep(0.02)
+                st.write_stream(_stream_report)
+                st.session_state.report_streamed = True
+                st.session_state.last_report = report_text
+            else:
+                st.markdown(report_text)
             
             with st.expander("🔍 View Agent Internal Thoughts & Citations"):
                 docs = full_state.get("documents", [])
