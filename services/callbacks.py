@@ -6,8 +6,8 @@ from uuid import UUID
 # Pricing per 1M tokens (in USD)
 MODEL_PRICING = {
     "openai/gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
-    "anthropic/claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
+    "anthropic/claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+    "anthropic/claude-3.5-sonnet-20241022": {"input": 3.00, "output": 15.00},
     "openai/gpt-4o": {"input": 2.50, "output": 10.00},
     "google/gemini-flash-1.5": {"input": 0.075, "output": 0.30},
     "google/gemini-2.0-flash-001": {"input": 0.10, "output": 0.40},

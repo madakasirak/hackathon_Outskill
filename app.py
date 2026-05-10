@@ -165,10 +165,10 @@ with st.sidebar:
     elif "OpenAI" in provider:
         models = ["openai/gpt-4o", "openai/gpt-4o-mini"]
     elif "Anthropic" in provider:
-        models = ["anthropic/claude-3.5-sonnet", "anthropic/claude-3-haiku"]
+        models = ["anthropic/claude-3.5-sonnet-20241022", "anthropic/claude-3-haiku-20240307"]
     else:
         # OpenRouter auto: show all popular models
-        models = ["Auto-select (gpt-4o-mini + claude-3-haiku)", "openai/gpt-4o-mini", "openai/gpt-4o", "google/gemini-2.0-flash-001", "anthropic/claude-3.5-sonnet", "anthropic/claude-3-haiku"]
+        models = ["Auto-select (gpt-4o-mini + claude-3-haiku)", "openai/gpt-4o-mini", "openai/gpt-4o", "google/gemini-2.0-flash-001", "anthropic/claude-3.5-sonnet-20241022", "anthropic/claude-3-haiku-20240307"]
     selected_model = st.selectbox("Model Selection", models, label_visibility="collapsed")
     
     st.markdown("<h5 style='color: #f8fafc; margin-top: 25px; margin-bottom: 5px; font-size: 14px;'>🔑 Authentication</h5>", unsafe_allow_html=True)

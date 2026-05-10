@@ -48,7 +48,7 @@ EVIDENCE FROM RAG:
         # Council Member 2: Alternative perspective
         if "auto" in selected_model.lower() or "Auto-select" in selected_model:
             # Auto mode: use a completely different model for diverse perspectives
-            member2_llm = get_council_llm("anthropic/claude-3-haiku")
+            member2_llm = get_council_llm("anthropic/claude-3-haiku-20240307")
         else:
             # Specific model selected: simulate council with higher temperature for creative divergence
             member2_llm = get_council_llm(selected_model, temperature=0.7)
