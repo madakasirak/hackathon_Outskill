@@ -290,39 +290,19 @@ class ResearchState(TypedDict):
 
 ```mermaid
 graph TD
-    subgraph UserInput ["User Input"]
-        Q["Research Query"]
-        F["Uploaded Files"]
-    end
-
-    subgraph State ["ResearchState"]
-        S1["documents"]
-        S2["insights"]
-        S3["reflection"]
-        S4["iteration"]
-        S5["final_report"]
-    end
-
-    Q -->|query| S1
-    F -->|PDF loader| FAISS_LOCAL
-
-    subgraph Retriever ["Smart Tool Router"]
-        FAISS_LOCAL["Local FAISS"]
-        TAV["Tavily"]
-        WIKI["Wikipedia"]
-        DDG["DuckDuckGo"]
-        ARX["ArXiv"]
-    end
-
-    Retriever -->|append docs| S1
-    S1 -->|embed and search| Analyzer
-    Analyzer -->|Model Council| S2
-    S2 -->|review| Reflection
-    S3 -->|gaps as new query| Retriever
-    S2 -->|compile| ReportBuilder
-    S3 -->|contradictions| ReportBuilder
-    ReportBuilder -->|SystemMsg HumanMsg| S5
-    S5 -->|stream word by word| UI["Streamlit UI"]
+    Q["Research Query"] --> Retriever
+    F["Uploaded Files"] --> FAISS["Local FAISS"]
+    FAISS --> Retriever
+    TAV["Tavily"] --> Retriever
+    WIKI["Wikipedia"] --> Retriever
+    DDG["DuckDuckGo"] --> Retriever
+    ARX["ArXiv"] --> Retriever
+    Retriever["Retriever Agent"] -->|documents| Analyzer["Analyzer Agent"]
+    Analyzer -->|insights| Reflection["Reflection Agent"]
+    Reflection -->|gaps| Retriever
+    Reflection -->|sufficient| ReportBuilder["Report Builder"]
+    Analyzer -->|insights| ReportBuilder
+    ReportBuilder -->|final report| UI["Streamlit UI"]
 ```
 
 ---
