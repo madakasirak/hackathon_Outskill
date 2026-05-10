@@ -115,8 +115,23 @@ def process_uploaded_files(files):
             
         try:
             if file.name.lower().endswith(".pdf"):
-                loader = PyPDFLoader(temp_path)
-                docs.extend(loader.load())
+                try:
+                    loader = PyPDFLoader(temp_path)
+                    docs.extend(loader.load())
+                except Exception:
+                    # Fallback: raw text extraction for complex/LaTeX PDFs
+                    import pypdf
+                    reader = pypdf.PdfReader(temp_path)
+                    for page_num, page in enumerate(reader.pages):
+                        try:
+                            text = page.extract_text() or ""
+                            if text.strip():
+                                from langchain_core.documents import Document
+                                docs.append(Document(page_content=text, metadata={"source": file.name, "page": page_num}))
+                        except Exception:
+                            continue
+                    if not any(d.metadata.get("source") == file.name for d in docs):
+                        st.warning(f"⚠️ Could not extract text from {file.name}")
             elif file.name.lower().endswith(".txt"):
                 loader = TextLoader(temp_path, encoding="utf-8")
                 docs.extend(loader.load())
