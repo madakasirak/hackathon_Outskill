@@ -4,28 +4,28 @@
 
 ```mermaid
 graph LR
-    subgraph UI ["app.py — Streamlit UI"]
-        A[User Types Query] --> B[Click Run Analysis]
-        B --> C[build_app → LangGraph]
+    subgraph UI ["app.py Streamlit UI"]
+        A["User Types Query"] --> B["Click Run Analysis"]
+        B --> C["build_app LangGraph"]
     end
 
-    subgraph LangGraph ["graph/workflow.py — StateGraph"]
-        C --> D["🔍 Retriever"]
-        D --> E["🔬 Analyzer"]
-        E --> F["🤔 Reflection"]
+    subgraph LangGraph ["graph/workflow.py StateGraph"]
+        C --> D["Retriever"]
+        D --> E["Analyzer"]
+        E --> F["Reflection"]
         F -->|gaps found| D
-        F -->|no gaps| G["📝 Report Builder"]
+        F -->|no gaps| G["Report Builder"]
     end
 
-    subgraph Services ["services/"]
-        H[llm.py — LLM Factory]
-        I[callbacks.py — Token Tracker]
-        J[db.py — SQLite Stats]
-        K[rag.py — FAISS Embeddings]
+    subgraph Services ["services"]
+        H["llm.py LLM Factory"]
+        I["callbacks.py Token Tracker"]
+        J["db.py SQLite Stats"]
+        K["rag.py FAISS Embeddings"]
     end
 
-    G --> L[Report Streamed Word-by-Word]
-    L --> M[Follow-up Chat]
+    G --> L["Report Streamed Word-by-Word"]
+    L --> M["Follow-up Chat"]
     I --> J
 ```
 
@@ -290,39 +290,39 @@ class ResearchState(TypedDict):
 
 ```mermaid
 graph TD
-    subgraph User Input
-        Q[Research Query]
-        F[Uploaded Files]
+    subgraph UserInput ["User Input"]
+        Q["Research Query"]
+        F["Uploaded Files"]
     end
 
-    subgraph State ["ResearchState (shared memory)"]
-        S1["documents: List - dict -"]
-        S2["insights: List - str -"]
-        S3["reflection: ReflectionResult"]
-        S4["iteration: int"]
-        S5["final_report: str"]
+    subgraph State ["ResearchState"]
+        S1["documents"]
+        S2["insights"]
+        S3["reflection"]
+        S4["iteration"]
+        S5["final_report"]
     end
 
-    Q --> |query| S1
-    F --> |"PyPDFLoader → fallback pypdf"| FAISS_LOCAL
+    Q -->|query| S1
+    F -->|PDF loader| FAISS_LOCAL
 
     subgraph Retriever ["Smart Tool Router"]
-        FAISS_LOCAL[Local FAISS]
-        TAV[Tavily]
-        WIKI[Wikipedia]
-        DDG[DuckDuckGo]
-        ARX[ArXiv]
+        FAISS_LOCAL["Local FAISS"]
+        TAV["Tavily"]
+        WIKI["Wikipedia"]
+        DDG["DuckDuckGo"]
+        ARX["ArXiv"]
     end
 
-    Retriever --> |append docs| S1
-    S1 --> |"embed + similarity search k=5"| Analyzer
-    Analyzer --> |"Model Council: 3 LLM calls"| S2
-    S2 --> |review| Reflection
-    S3 --> |"gaps → new query"| Retriever
-    S2 --> |compile| ReportBuilder
-    S3 --> |contradictions| ReportBuilder
-    ReportBuilder --> |"SystemMsg + HumanMsg"| S5
-    S5 --> |"st.write_stream word-by-word"| UI[Streamlit UI]
+    Retriever -->|append docs| S1
+    S1 -->|embed and search| Analyzer
+    Analyzer -->|Model Council| S2
+    S2 -->|review| Reflection
+    S3 -->|gaps as new query| Retriever
+    S2 -->|compile| ReportBuilder
+    S3 -->|contradictions| ReportBuilder
+    ReportBuilder -->|SystemMsg HumanMsg| S5
+    S5 -->|stream word by word| UI["Streamlit UI"]
 ```
 
 ---
